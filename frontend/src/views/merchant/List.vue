@@ -44,7 +44,7 @@
 
         <!-- 商家Logo和名称 -->
         <div class="merchant-header">
-          <el-avatar :size="48" :src="item.logo" class="merchant-logo">
+          <el-avatar :size="34" :src="item.logo" class="merchant-logo">
             <span class="material-symbols-outlined text-2xl text-on-surface-variant">storefront</span>
           </el-avatar>
           <div class="merchant-info">
@@ -232,86 +232,86 @@ const closeDropdown = () => {
 .page-title {
   font-family: 'Manrope', sans-serif;
   font-weight: 800;
-  font-size: 28px;
-  color: #ffffff;
+  font-size: 20px;
+  color: var(--text);
   letter-spacing: -0.01em;
   line-height: 1.2;
 }
 
 .page-subtitle {
   font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  color: #919191;
+  font-size: 9px;
+  color: var(--text-3);
   line-height: 1.5;
 }
 
-/* 操作栏 - 单行布局 */
+/* 操作栏 - 单行布局 - 精致缩小 */
 .action-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  padding: 20px 24px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 20px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 .action-left {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .action-right {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
 }
 
 /* 排序选择器 */
 .sort-select {
-  width: 160px;
+  width: 112px;
 }
 
 /* 新增按钮 */
 .add-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 28px;
+  gap: 6px;
+  padding: 8px 20px;
   background: linear-gradient(135deg, #007AFF, #0055cc);
   border: none;
-  border-radius: 14px;
+  border-radius: 10px;
   font-family: 'Manrope', sans-serif;
   font-weight: 700;
-  font-size: 14px;
-  color: #ffffff;
-  box-shadow: 0 4px 20px -4px rgba(0, 122, 255, 0.4);
+  font-size: 10px;
+  color: var(--text);
+  box-shadow: 0 4px 14px -3px rgba(0, 122, 255, 0.4);
   transition: all 0.3s ease;
 }
 
 .add-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px -4px rgba(0, 122, 255, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px -3px rgba(0, 122, 255, 0.5);
 }
 
 /* 商家网格 - 24px 卡片间距 */
 .merchant-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 24px;
 }
 
-/* 商家卡片 - 玻璃态设计 */
+/* 商家卡片 - 玻璃态设计 - 缩小30% */
 .merchant-card {
   position: relative;
-  padding: 20px;
+  padding: 14px;
   background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 0.5px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
+  border-radius: 17px;
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   animation: cardIn 0.5s ease-out both;
@@ -330,26 +330,26 @@ const closeDropdown = () => {
 
 .merchant-card:hover {
   border-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.4);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 28px -8px rgba(0, 0, 0, 0.4);
 }
 
 /* 卡片角标 */
 .card-badges {
   position: absolute;
-  top: 16px;
-  left: 16px;
+  top: 11px;
+  left: 11px;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   z-index: 1;
 }
 
 .badge {
-  padding: 4px 10px;
-  border-radius: 8px;
+  padding: 3px 7px;
+  border-radius: 6px;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: 10px;
+  font-size: 7px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
@@ -369,51 +369,51 @@ const closeDropdown = () => {
 /* 更多操作按钮 */
 .more-btn-wrapper {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 11px;
+  right: 11px;
   z-index: 10;
 }
 
 .more-btn {
-  width: 32px;
-  height: 32px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  color: #919191;
+  border-radius: 6px;
+  color: var(--text-3);
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 16px;
+  font-size: 11px;
   font-weight: bold;
 }
 
 .more-btn:hover {
   background: rgba(255, 255, 255, 0.15);
-  color: #ffffff;
+  color: var(--text);
 }
 
 .dropdown-menu {
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 8px;
+  margin-top: 6px;
   background: #1f1f1f;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 8px;
-  min-width: 140px;
+  border-radius: 8px;
+  padding: 6px;
+  min-width: 98px;
   z-index: 100;
 }
 
 .dropdown-item {
   display: flex;
   align-items: center;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 10px;
   color: #e2e2e2;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -421,7 +421,7 @@ const closeDropdown = () => {
 
 .dropdown-item:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
+  color: var(--text);
 }
 
 .dropdown-item.danger {
@@ -439,22 +439,22 @@ const closeDropdown = () => {
 
 .more-btn:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  color: var(--text);
 }
 
 /* 商家Logo和名称一行 */
 .merchant-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  margin-top: 40px;
+  gap: 8px;
+  margin-bottom: 14px;
+  margin-top: 28px;
 }
 
 .merchant-logo {
   background: rgba(255, 255, 255, 0.08);
   border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px !important;
+  border-radius: 8px !important;
   flex-shrink: 0;
 }
 
@@ -466,11 +466,11 @@ const closeDropdown = () => {
 .merchant-name {
   font-family: 'Manrope', sans-serif;
   font-weight: 700;
-  font-size: 18px;
-  color: #ffffff;
+  font-size: 13px;
+  color: var(--text);
   letter-spacing: 0;
   line-height: 1.3;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -478,36 +478,36 @@ const closeDropdown = () => {
 
 .merchant-expiry {
   font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  color: #919191;
+  font-size: 8px;
+  color: var(--text-3);
   line-height: 1.5;
 }
 
 /* 额度区域 */
 .quota-section {
-  margin-bottom: 20px;
-  padding: 16px;
+  margin-bottom: 14px;
+  padding: 11px;
   background: rgba(0, 0, 0, 0.2);
-  border-radius: 16px;
+  border-radius: 11px;
 }
 
 .quota-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .quota-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .quota-label {
   font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  color: #919191;
+  font-size: 8px;
+  color: var(--text-3);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -515,29 +515,23 @@ const closeDropdown = () => {
 .quota-value {
   font-family: 'Manrope', sans-serif;
   font-weight: 700;
-  font-size: 18px;
-  color: #007AFF;
+  font-size: 13px;
+  color: var(--accent);
 }
 
 .recharge-btn {
   background: rgba(0, 122, 255, 0.15) !important;
   border: 1px solid rgba(0, 122, 255, 0.3) !important;
-  border-radius: 8px !important;
+  border-radius: 6px !important;
   color: #007AFF !important;
-  font-size: 12px !important;
-}
-
-.quota-value {
-  font-family: 'Manrope', sans-serif;
-  font-weight: 700;
-  font-size: 18px;
-  color: #007AFF;
+  font-size: 8px !important;
+  padding: 4px 8px !important;
 }
 
 .quota-bar {
-  height: 6px;
+  height: 4px;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 3px;
+  border-radius: 2px;
   overflow: hidden;
 }
 
@@ -571,14 +565,14 @@ const closeDropdown = () => {
   font-family: 'Manrope', sans-serif;
   font-weight: 700;
   font-size: 24px;
-  color: #ffffff;
+  color: var(--text);
   margin-bottom: 12px;
 }
 
 .empty-desc {
   font-family: 'Inter', sans-serif;
   font-size: 14px;
-  color: #919191;
+  color: var(--text-3);
   margin-bottom: 32px;
 }
 
@@ -608,7 +602,7 @@ const closeDropdown = () => {
 .loading-text {
   font-family: 'Inter', sans-serif;
   font-size: 14px;
-  color: #919191;
+  color: var(--text-3);
 }
 
 /* 分页 - 10px Label 层级 */
@@ -632,19 +626,19 @@ const closeDropdown = () => {
   border-radius: 12px;
   font-family: 'Inter', sans-serif;
   font-size: 13px;
-  color: #919191;
+  color: var(--text-3);
   transition: all 0.3s ease;
 }
 
 .custom-pagination :deep(.el-pager li:hover) {
   background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  color: var(--text);
 }
 
 .custom-pagination :deep(.el-pager li.is-active) {
   background: #007AFF;
   border-color: #007AFF;
-  color: #ffffff;
+  color: var(--text);
 }
 
 .custom-pagination :deep(.btn-prev),
@@ -654,7 +648,7 @@ const closeDropdown = () => {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  color: #919191;
+  color: var(--text-3);
 }
 
 /* 下拉菜单 */
@@ -800,14 +794,14 @@ const closeDropdown = () => {
   font-family: 'Manrope', sans-serif;
   font-weight: 600;
   font-size: 18px;
-  color: #ffffff;
+  color: var(--text);
   margin-bottom: 8px;
 }
 
 .delete-hint {
   font-family: 'Inter', sans-serif;
   font-size: 14px;
-  color: #919191;
+  color: var(--text-3);
 }
 
 /* 删除弹窗 */

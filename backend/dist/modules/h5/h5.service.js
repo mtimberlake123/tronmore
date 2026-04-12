@@ -20,12 +20,14 @@ const uuid_1 = require("uuid");
 const merchant_entity_1 = require("../merchant/merchant.entity");
 const generation_entity_1 = require("../generator/generation.entity");
 const analytics_log_entity_1 = require("../analytics/analytics-log.entity");
+const sensitive_word_entity_1 = require("../admin/sensitive-word.entity");
 const ai_service_1 = require("../ai/ai.service");
 let H5Service = class H5Service {
-    constructor(merchantRepository, generationRepository, analyticsRepository, aiService) {
+    constructor(merchantRepository, generationRepository, analyticsRepository, sensitiveWordRepository, aiService) {
         this.merchantRepository = merchantRepository;
         this.generationRepository = generationRepository;
         this.analyticsRepository = analyticsRepository;
+        this.sensitiveWordRepository = sensitiveWordRepository;
         this.aiService = aiService;
     }
     async getMerchantConfig(merchantId) {
@@ -53,7 +55,7 @@ let H5Service = class H5Service {
         if (merchant.balance <= 0) {
             throw new common_1.BadRequestException('该商家额度已用完', '4001');
         }
-        const prompt = this.buildPrompt(merchant, type);
+        const prompt = await this.buildPrompt(merchant, type);
         let content;
         try {
             content = await this.callAI(prompt, type);
@@ -62,7 +64,7 @@ let H5Service = class H5Service {
             console.error('AI生成失败:', error);
             throw new common_1.BadRequestException('AI服务异常', '4002');
         }
-        if (this.containsSensitiveWords(content)) {
+        if (await this.containsSensitiveWords(content)) {
             throw new common_1.BadRequestException('内容优化中，请重试', '4003');
         }
         const images = this.mockImages(6);
@@ -127,7 +129,7 @@ let H5Service = class H5Service {
         });
         await this.analyticsRepository.save(log);
     }
-    buildPrompt(merchant, type) {
+    async buildPrompt(merchant, type) {
         const industryPrompts = {
             catering: '你是一个专业的餐饮营销文案专家，文风活泼、接地气，擅长写吸引人的评价。',
             beauty: '你是一个专业的美业营销文案专家，文风精致，擅长写高端感的评价。',
@@ -148,15 +150,27 @@ let H5Service = class H5Service {
         if (merchant.incentive) {
             prompt += `激励活动：${merchant.incentive}\n`;
         }
-        prompt += '\n【重要】请确保内容不包含敏感词，文风自然，避免AI味。';
+        const activeRules = await this.sensitiveWordRepository.find({ where: { active: true } });
+        if (activeRules.length > 0) {
+            const ruleConstraints = activeRules
+                .filter(r => r.rule)
+                .map(r => `- ${r.rule}`)
+                .join('\n');
+            if (ruleConstraints) {
+                prompt += `\n\n【合规要求】请严格遵守以下规则：\n${ruleConstraints}`;
+            }
+        }
+        prompt += '\n\n【重要】请确保内容符合平台规范，文风自然，避免AI味。';
         return prompt;
     }
     async callAI(prompt, type) {
         return await this.aiService.generate(prompt);
     }
-    containsSensitiveWords(text) {
-        const words = ['测试', '示范', '占位'];
-        return words.some(word => text.includes(word));
+    async containsSensitiveWords(text) {
+        const rules = await this.sensitiveWordRepository.find({ where: { active: true } });
+        if (!rules.length)
+            return false;
+        return rules.some(r => r.word && text.includes(r.word));
     }
     mockImages(count) {
         return Array.from({ length: count }, (_, i) => ({
@@ -172,7 +186,9 @@ exports.H5Service = H5Service = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(merchant_entity_1.Merchant)),
     __param(1, (0, typeorm_1.InjectRepository)(generation_entity_1.Generation)),
     __param(2, (0, typeorm_1.InjectRepository)(analytics_log_entity_1.AnalyticsLog)),
+    __param(3, (0, typeorm_1.InjectRepository)(sensitive_word_entity_1.SensitiveWord)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         ai_service_1.AiService])

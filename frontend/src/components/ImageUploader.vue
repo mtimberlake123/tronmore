@@ -8,7 +8,7 @@
         :show-file-list="false"
         :on-change="handleSingleChange"
         :accept="accept"
-        :disabled="disabled"
+        :disabled="disabled || uploading"
       >
         <div v-if="modelValue" class="image-preview">
           <img :src="modelValue" alt="preview" class="preview-img" />
@@ -17,7 +17,8 @@
           </div>
         </div>
         <div v-else class="upload-placeholder">
-          <span class="plus-icon">+</span>
+          <span v-if="uploading" class="plus-icon">...</span>
+          <span v-else class="plus-icon">+</span>
         </div>
       </el-upload>
     </div>
@@ -52,6 +53,8 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { warehouse } from '@/api'
+import { ElMessage } from 'element-plus'
 
 const props = defineProps({
   modelValue: {
@@ -73,12 +76,17 @@ const props = defineProps({
   disabled: {
     type: Boolean,
     default: false
+  },
+  merchantId: {
+    type: [String, Number],
+    default: null
   }
 })
 
 const emit = defineEmits(['update:modelValue'])
 
 const imageList = ref([])
+const uploading = ref(false)
 
 // 监听外部值变化
 watch(() => props.modelValue, (newVal) => {
@@ -88,16 +96,98 @@ watch(() => props.modelValue, (newVal) => {
 }, { immediate: true })
 
 // 单图上传
-const handleSingleChange = (file) => {
-  const url = URL.createObjectURL(file.raw)
-  emit('update:modelValue', url)
+const handleSingleChange = async (file) => {
+  // 文件大小限制 5MB
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('图片大小不能超过 5MB')
+    return
+  }
+
+  // 无 merchantId 时使用 blob URL（用于不需要持久化的场景）
+  if (!props.merchantId) {
+    const url = URL.createObjectURL(file.raw)
+    emit('update:modelValue', url)
+    return
+  }
+
+  uploading.value = true
+  try {
+    // 转成 base64 作为 url
+    const base64 = await fileToBase64(file.raw)
+    const res = await warehouse.upload(props.merchantId, {
+      url: base64,
+      tab: 'logo'
+    })
+    emit('update:modelValue', res.url)
+    ElMessage.success('上传成功')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('上传失败')
+  } finally {
+    uploading.value = false
+  }
 }
 
 // 多图上传
-const handleMultipleChange = (file) => {
-  const url = URL.createObjectURL(file.raw)
-  imageList.value.push(url)
-  emit('update:modelValue', [...imageList.value])
+const handleMultipleChange = async (file) => {
+  if (!props.merchantId) {
+    const url = URL.createObjectURL(file.raw)
+    imageList.value.push(url)
+    emit('update:modelValue', [...imageList.value])
+    return
+  }
+
+  // 文件大小限制 5MB
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('图片大小不能超过 5MB')
+    return
+  }
+
+  uploading.value = true
+  try {
+    const base64 = await fileToBase64(file.raw)
+    const res = await warehouse.upload(props.merchantId, {
+      url: base64,
+      tab: 'product'
+    })
+    imageList.value.push(res.url)
+    emit('update:modelValue', [...imageList.value])
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('上传失败')
+  } finally {
+    uploading.value = false
+  }
+}
+
+// 文件转 base64（压缩图片）
+const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        // 压缩到最大 800px 宽
+        const maxWidth = 800
+        let width = img.width
+        let height = img.height
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width
+          width = maxWidth
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', 0.7))
+      }
+      img.onerror = reject
+      img.src = e.target.result
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
 }
 
 // 删除单图

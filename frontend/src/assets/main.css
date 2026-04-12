@@ -97,26 +97,188 @@ body {
   border: 0.5px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Primary Button - Pill shape */
+/* ========================================
+   BUTTON SYSTEM - 按钮规范
+   ======================================== */
+
+/* 一级按钮 - Primary Button
+   使用场景：主要操作，如提交、确认、创建
+   样式：实心填充 + 主题色 + 阴影 */
 .btn-primary {
-  @apply bg-[#007AFF] text-white px-6 py-3 rounded-full font-headline font-bold text-[10px] uppercase tracking-widest;
-  box-shadow: 0 0 15px rgba(0, 122, 255, 0.25);
-  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #007AFF;
+  border: 1px solid #007AFF;
+  border-radius: 10px;
+  color: #ffffff;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
 }
 
 .btn-primary:hover {
-  @apply brightness-110;
-  box-shadow: 0 0 20px rgba(0, 122, 255, 0.4);
+  background: #0066dd;
+  border-color: #0066dd;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 122, 255, 0.35);
 }
 
-/* Secondary Button - Ghost */
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+}
+
+/* 二级按钮 - Secondary Button
+   使用场景：次要操作，如取消、返回
+   样式：描边 + 半透明背景 + 主题色文字 */
 .btn-secondary {
-  @apply bg-white/5 border border-white/10 text-white px-6 py-3 rounded-full font-headline font-semibold text-[10px] uppercase tracking-widest;
-  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  color: #007AFF;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.25s ease;
 }
 
 .btn-secondary:hover {
-  @apply bg-white/10;
+  background: rgba(0, 122, 255, 0.12);
+  border-color: rgba(0, 122, 255, 0.3);
+}
+
+.btn-secondary:active {
+  background: rgba(0, 122, 255, 0.18);
+}
+
+/* 三级按钮 - Tertiary Button
+   使用场景：低优先级操作，如文字链接、更多选项
+   样式：纯文字 + 无背景边框 */
+.btn-tertiary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #007AFF;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-tertiary:hover {
+  background: rgba(0, 122, 255, 0.08);
+  color: #60a5fa;
+}
+
+.btn-tertiary:active {
+  background: rgba(0, 122, 255, 0.15);
+}
+
+/* 危险按钮 - Danger Button
+   使用场景：危险操作，如删除、退出
+   样式：红色实心填充 */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #dc2626;
+  border: 1px solid #dc2626;
+  border-radius: 10px;
+  color: #ffffff;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+}
+
+.btn-danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.35);
+}
+
+.btn-danger:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
+}
+
+/* 幽灵按钮 - Ghost Button
+   使用场景：工具栏、筛选器中的次要操作
+   样式：透明背景 + 描边 */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #e2e2e2;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.btn-ghost:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-ghost.active {
+  background: rgba(0, 122, 255, 0.15);
+  border-color: rgba(0, 122, 255, 0.4);
+  color: #60a5fa;
+}
+
+/* 按钮尺寸变体 */
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+.btn-lg {
+  padding: 14px 32px;
+  font-size: 16px;
+  border-radius: 12px;
+}
+
+/* 按钮图标间距 */
+.btn-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 /* Nav Item */
@@ -265,14 +427,76 @@ body {
   box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.1) !important;
 }
 
+/* Element Plus 按钮统一规范 - 夜间模式 */
+.el-button {
+  border-radius: 10px !important;
+  font-family: 'Manrope', sans-serif !important;
+  font-weight: 600 !important;
+  transition: all 0.25s ease !important;
+}
+
 .el-button--primary {
   background: #007AFF !important;
   border-color: #007AFF !important;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25) !important;
 }
 
 .el-button--primary:hover {
-  background: #007AFF !important;
-  filter: brightness(1.1) !important;
+  background: #0066dd !important;
+  border-color: #0066dd !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(0, 122, 255, 0.35) !important;
+}
+
+.el-button--default {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #e2e2e2 !important;
+  border-radius: 10px !important;
+}
+
+.el-button--default:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+}
+
+.el-button--text {
+  color: #007AFF !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 8px 12px !important;
+}
+
+.el-button--text:hover {
+  background: rgba(0, 122, 255, 0.1) !important;
+  color: #60a5fa !important;
+}
+
+.el-button--danger {
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25) !important;
+}
+
+.el-button--danger:hover {
+  background: #b91c1c !important;
+  border-color: #b91c1c !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.35) !important;
+}
+
+.el-button--small {
+  padding: 8px 16px !important;
+  font-size: 12px !important;
+  border-radius: 8px !important;
+}
+
+.el-button--large {
+  padding: 14px 32px !important;
+  font-size: 16px !important;
+  border-radius: 12px !important;
 }
 
 .el-select__wrapper {
@@ -1251,4 +1475,298 @@ body {
 /* 紧凑间距 */
 .compact-gap {
   margin-bottom: 8px;
+}
+
+/* ========================================
+   LIGHT THEME OVERRIDES
+   ======================================== */
+html.light-theme {
+  --primary: #2563eb;
+  --primary-glow: rgba(37, 99, 235, 0.15);
+  --surface: #ffffff;
+  --surface-container: #f8f9fa;
+  --surface-container-low: #f1f5f9;
+  --surface-container-lowest: #f8fafc;
+  --on-surface: #1a1a1a;
+  --on-surface-variant: #5a5a5a;
+}
+
+html.light-theme body {
+  background-color: #f0f2f5;
+  color: #1a1a1a;
+  background-image: none;
+}
+
+html.light-theme .glass-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+html.light-theme .glass-card:hover {
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+html.light-theme .floating-glass {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+html.light-theme .main-content-glass {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+html.light-theme .ai-panel-glass {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+}
+
+html.light-theme .btn-primary {
+  background: #2563eb;
+  border: 1px solid #2563eb;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+html.light-theme .btn-primary:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+
+html.light-theme .btn-secondary {
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  color: #2563eb;
+}
+
+html.light-theme .btn-secondary:hover {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
+html.light-theme .btn-tertiary {
+  color: #2563eb;
+}
+
+html.light-theme .btn-tertiary:hover {
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+}
+
+html.light-theme .btn-danger {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+html.light-theme .btn-danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+html.light-theme .btn-ghost {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #5a5a5a;
+}
+
+html.light-theme .btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #1a1a1a;
+}
+
+html.light-theme .btn-ghost.active {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.3);
+  color: #2563eb;
+}
+
+html.light-theme .nav-item {
+  color: #5a5a5a;
+}
+
+html.light-theme .nav-item:hover {
+  color: #1a1a1a;
+  background: rgba(37, 99, 235, 0.06);
+}
+
+html.light-theme .nav-item.active {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+}
+
+html.light-theme .input-dark {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #1a1a1a;
+}
+
+html.light-theme .input-dark::placeholder {
+  color: #909090;
+}
+
+html.light-theme .headline-display,
+html.light-theme .headline-1,
+html.light-theme .headline-2 {
+  color: #1a1a1a;
+}
+
+html.light-theme .body-large,
+html.light-theme .body-medium {
+  color: #5a5a5a;
+}
+
+html.light-theme .label-caps {
+  color: #909090;
+}
+
+html.light-theme .nav-card-title {
+  color: #1a1a1a;
+}
+
+html.light-theme .nav-card-subtitle {
+  color: #909090;
+}
+
+html.light-theme .nav-card-icon {
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+}
+
+html.light-theme .collapse-btn {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #5a5a5a;
+}
+
+html.light-theme .collapse-btn:hover {
+  background: rgba(37, 99, 235, 0.06);
+  color: #1a1a1a;
+}
+
+html.light-theme .user-card {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html.light-theme .user-name {
+  color: #1a1a1a;
+}
+
+html.light-theme .user-role {
+  color: #909090;
+}
+
+html.light-theme .ai-message-bubble {
+  color: #1a1a1a;
+}
+
+html.light-theme .ai-message-assistant .ai-message-bubble {
+  background: #f1f5f9;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Element Plus Light Theme */
+html.light-theme .el-input__wrapper {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+html.light-theme .el-input__inner {
+  color: #1a1a1a !important;
+}
+
+html.light-theme .el-input__wrapper:hover {
+  border-color: rgba(37, 99, 235, 0.4) !important;
+}
+
+html.light-theme .el-input__wrapper.is-focus {
+  border-color: #2563eb !important;
+}
+
+html.light-theme .el-button--primary {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+html.light-theme .el-select__wrapper {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+html.light-theme .el-tag {
+  background: rgba(37, 99, 235, 0.08) !important;
+  border-color: rgba(37, 99, 235, 0.2) !important;
+  color: #2563eb !important;
+}
+
+html.light-theme .el-table {
+  background: transparent !important;
+  color: #1a1a1a !important;
+}
+
+html.light-theme .el-table th.el-table__cell {
+  background: #f8f9fa !important;
+  color: #5a5a5a !important;
+}
+
+html.light-theme .el-table__row:hover > td.el-table__cell {
+  background: rgba(37, 99, 235, 0.04) !important;
+}
+
+html.light-theme .el-dialog {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light-theme .el-dialog__title {
+  color: #1a1a1a !important;
+}
+
+html.light-theme .el-tabs__item {
+  color: #909090 !important;
+}
+
+html.light-theme .el-tabs__item.is-active {
+  color: #2563eb !important;
+}
+
+html.light-theme .el-pagination {
+  color: #5a5a5a !important;
+}
+
+html.light-theme .el-pagination button,
+html.light-theme .el-pagination .el-pager li {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: #5a5a5a !important;
+}
+
+html.light-theme .el-pagination .el-pager li.is-active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+html.light-theme .el-message,
+html.light-theme .el-notification {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light-theme .el-message-box {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light-theme ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+html.light-theme ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
 }

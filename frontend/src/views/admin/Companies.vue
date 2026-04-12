@@ -8,7 +8,7 @@
         </svg>
         <input
           v-model="keyword"
-          placeholder="Search company..."
+          placeholder="搜索公司..."
           class="input search-input"
           @input="debounceSearch"
         />
@@ -17,7 +17,7 @@
         <svg width="0.625rem" height="0.625rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M12 5v14M5 12h14"/>
         </svg>
-        New
+        新建
       </button>
     </div>
 
@@ -33,26 +33,26 @@
           <div class="company-avatar">{{ c.name?.charAt(0) || '?' }}</div>
           <div class="company-info">
             <div class="company-name">{{ c.name }}</div>
-            <div class="company-meta mono">{{ c.phone || 'No phone' }}</div>
+            <div class="company-meta mono">{{ c.phone || '无电话' }}</div>
           </div>
         </div>
         <div class="company-stats">
           <div class="stat">
             <span class="stat-val mono">{{ c.merchants || 0 }}</span>
-            <span class="stat-key">MER</span>
+            <span class="stat-key">商家</span>
           </div>
           <div class="stat">
             <span class="stat-val mono" :class="{ 'accent': c.balance > 0 }">{{ c.balance?.toLocaleString() || 0 }}</span>
-            <span class="stat-key">QUOTA</span>
+            <span class="stat-key">额度</span>
           </div>
           <div class="stat">
             <span class="stat-val mono">{{ c.created_at ? formatDate(c.created_at) : '—' }}</span>
-            <span class="stat-key">DATE</span>
+            <span class="stat-key">日期</span>
           </div>
         </div>
         <div class="company-actions">
-          <button class="btn btn-outline btn-sm" @click="openRecharge(c)">Recharge</button>
-          <button class="btn btn-outline btn-sm" @click="openDetail(c)">Detail</button>
+          <button class="btn btn-outline btn-sm" @click="openRecharge(c)">充值</button>
+          <button class="btn btn-outline btn-sm" @click="openDetail(c)">详情</button>
         </div>
       </div>
 
@@ -80,7 +80,7 @@
         <div class="dialog-header">
           <div class="section-header" style="margin-bottom:0">
             <div class="section-bar"></div>
-            <span class="section-title">New Company</span>
+            <span class="section-title">新建公司</span>
           </div>
           <button class="dialog-close" @click="showCreateDialog = false">
             <svg width="0.75rem" height="0.75rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -90,21 +90,21 @@
         </div>
         <div class="dialog-body">
           <div class="form-item">
-            <label>Company Name</label>
-            <input v-model="createForm.name" class="input" placeholder="Enter name" />
+            <label>公司名称</label>
+            <input v-model="createForm.name" class="input" placeholder="输入公司名称" />
           </div>
           <div class="form-item">
-            <label>Phone</label>
-            <input v-model="createForm.phone" class="input" placeholder="Enter phone" />
+            <label>手机号</label>
+            <input v-model="createForm.phone" class="input" placeholder="输入手机号" />
           </div>
           <div class="form-item">
-            <label>Password</label>
-            <input v-model="createForm.password" type="password" class="input" placeholder="Initial password" />
+            <label>密码</label>
+            <input v-model="createForm.password" type="password" class="input" placeholder="初始密码" />
           </div>
         </div>
         <div class="dialog-footer">
-          <button class="btn btn-outline" @click="showCreateDialog = false">Cancel</button>
-          <button class="btn btn-primary" :loading="createLoading" @click="handleCreate">Create</button>
+          <button class="btn btn-outline" @click="showCreateDialog = false">取消</button>
+          <button class="btn btn-primary" :loading="createLoading" @click="handleCreate">创建</button>
         </div>
       </div>
     </div>
@@ -115,7 +115,7 @@
         <div class="dialog-header">
           <div class="section-header" style="margin-bottom:0">
             <div class="section-bar" style="background:#FF6B35"></div>
-            <span class="section-title">Recharge</span>
+            <span class="section-title">充值</span>
           </div>
           <button class="dialog-close" @click="showRechargeDialog = false">
             <svg width="0.75rem" height="0.75rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -126,33 +126,33 @@
         <div class="dialog-body">
           <div class="recharge-info" v-if="rechargeTarget">
             <span class="recharge-name">{{ rechargeTarget.name }}</span>
-            <span class="recharge-balance mono">Current: {{ rechargeTarget.balance || 0 }}</span>
+            <span class="recharge-balance mono">当前额度: {{ rechargeTarget.balance || 0 }}</span>
           </div>
           <div class="form-item">
-            <label>Amount</label>
+            <label>充值金额</label>
             <input v-model.number="rechargeForm.amount" type="number" class="input" min="1" />
           </div>
           <div class="form-item">
-            <label>Package</label>
-            <input v-model="rechargeForm.package_name" class="input" placeholder="e.g. Annual Plan" />
+            <label>套餐名称</label>
+            <input v-model="rechargeForm.package_name" class="input" placeholder="如：年度套餐" />
           </div>
         </div>
         <div class="dialog-footer">
-          <button class="btn btn-outline" @click="showRechargeDialog = false">Cancel</button>
-          <button class="btn btn-primary" :loading="rechargeLoading" @click="handleRecharge">Confirm</button>
+          <button class="btn btn-outline" @click="showRechargeDialog = false">取消</button>
+          <button class="btn btn-primary" :loading="rechargeLoading" @click="handleRecharge">确认</button>
         </div>
       </div>
     </div>
 
     <!-- 详情弹窗 -->
-    <div class="dialog-overlay" v-if="showDetailDialog" @click.self="showDetailDialog = false">
-      <div class="dialog">
+    <div class="dialog-overlay" v-if="showDetailDialog" @click.self="closeDetail">
+      <div class="dialog dialog-lg">
         <div class="dialog-header">
           <div class="section-header" style="margin-bottom:0">
             <div class="section-bar"></div>
             <span class="section-title">{{ detailTarget?.name || 'Detail' }}</span>
           </div>
-          <button class="dialog-close" @click="showDetailDialog = false">
+          <button class="dialog-close" @click="closeDetail">
             <svg width="0.75rem" height="0.75rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
@@ -174,9 +174,67 @@
             </div>
             <div class="detail-item">
               <span class="detail-label">Merchants</span>
-              <span class="detail-value mono">{{ detailTarget.merchants || 0 }}</span>
+              <span class="detail-value mono">{{ detailMerchants.length }}</span>
             </div>
           </div>
+
+          <!-- 商家列表 -->
+          <div class="merchants-section" v-if="detailMerchants.length > 0">
+            <div class="section-header" style="margin-bottom:0.5rem">
+              <div class="section-bar" style="background:#8b5cf6"></div>
+              <span class="section-title">商家列表</span>
+            </div>
+            <div class="merchants-list">
+              <div v-for="m in detailMerchants" :key="m.id" class="merchant-row">
+                <div class="merchant-info">
+                  <span class="merchant-name">{{ m.name }}</span>
+                  <span class="merchant-balance mono">余额: {{ m.balance || 0 }}</span>
+                </div>
+                <div class="merchant-actions">
+                  <button class="btn btn-outline btn-xs" @click="openMigrate(m)">迁移</button>
+                  <button class="btn btn-danger btn-xs" @click="handleDeleteMerchant(m)">删除</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="merchants-empty">
+            <p>暂无商家</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 迁移弹窗 -->
+    <div class="dialog-overlay" v-if="showMigrateDialog" @click.self="showMigrateDialog = false">
+      <div class="dialog dialog-sm">
+        <div class="dialog-header">
+          <div class="section-header" style="margin-bottom:0">
+            <div class="section-bar" style="background:#8b5cf6"></div>
+            <span class="section-title">迁移商家</span>
+          </div>
+          <button class="dialog-close" @click="showMigrateDialog = false">
+            <svg width="0.75rem" height="0.75rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="dialog-body">
+          <div class="migrate-info" v-if="migrateTarget">
+            <span>将从「{{ detailTarget?.name }}」迁移</span>
+          </div>
+          <div class="form-item">
+            <label>目标公司</label>
+            <select v-model="migrateForm.targetTenantId" class="input input-select">
+              <option value="">选择目标公司</option>
+              <option v-for="c in companies" :key="c.company_id" :value="c.company_id">
+                {{ c.name }}
+              </option>
+            </select>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn btn-outline" @click="showMigrateDialog = false">取消</button>
+          <button class="btn btn-primary" :loading="migrateLoading" @click="handleMigrate">确认迁移</button>
         </div>
       </div>
     </div>
@@ -185,7 +243,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { admin } from '@/api'
 
 const companies = ref([])
@@ -206,6 +264,12 @@ const rechargeForm = ref({ amount: 100, package_name: '' })
 
 const showDetailDialog = ref(false)
 const detailTarget = ref(null)
+const detailMerchants = ref([])
+
+const showMigrateDialog = ref(false)
+const migrateLoading = ref(false)
+const migrateTarget = ref(null)
+const migrateForm = ref({ targetTenantId: '' })
 
 const pageCount = computed(() => Math.ceil(total.value / pageSize.value))
 
@@ -236,7 +300,7 @@ const handleCreate = async () => {
   createLoading.value = true
   try {
     await admin.companies.create(createForm.value)
-    ElMessage.success('Created')
+    ElMessage.success('创建成功')
     showCreateDialog.value = false
     createForm.value = { name: '', phone: '', password: '' }
     fetchCompanies()
@@ -251,20 +315,72 @@ const openRecharge = (c) => {
 }
 
 const handleRecharge = async () => {
-  if (!rechargeForm.value.amount) { ElMessage.warning('Enter amount'); return }
+  if (!rechargeForm.value.amount) { ElMessage.warning('请输入充值金额'); return }
   rechargeLoading.value = true
   try {
     await admin.companies.recharge(rechargeTarget.value.id, rechargeForm.value)
-    ElMessage.success('Recharged')
+    ElMessage.success('充值成功')
     showRechargeDialog.value = false
     fetchCompanies()
   } catch (e) { console.error(e) }
   finally { rechargeLoading.value = false }
 }
 
-const openDetail = (c) => {
+const openDetail = async (c) => {
   detailTarget.value = c
   showDetailDialog.value = true
+  // 获取该公司下的商家
+  try {
+    const data = await admin.merchants.list({ tenantId: c.company_id })
+    detailMerchants.value = data?.list || []
+  } catch (e) {
+    console.error(e)
+    detailMerchants.value = []
+  }
+}
+
+const closeDetail = () => {
+  showDetailDialog.value = false
+  detailTarget.value = null
+  detailMerchants.value = []
+}
+
+const handleDeleteMerchant = async (m) => {
+  try {
+    await ElMessageBox.confirm(`确定删除商家「${m.name}」？删除后无法恢复。`, '删除确认', { type: 'warning' })
+    await admin.merchants.delete(m.id)
+    ElMessage.success('删除成功')
+    // 刷新商家列表
+    const data = await admin.merchants.list({ tenantId: detailTarget.value.company_id })
+    detailMerchants.value = data?.list || []
+    fetchCompanies()
+  } catch (e) {
+    if (e !== 'cancel') console.error(e)
+  }
+}
+
+const openMigrate = (m) => {
+  migrateTarget.value = m
+  migrateForm.value = { targetTenantId: '' }
+  showMigrateDialog.value = true
+}
+
+const handleMigrate = async () => {
+  if (!migrateForm.value.targetTenantId) { ElMessage.warning('请选择目标公司'); return }
+  if (migrateForm.value.targetTenantId === detailTarget.value.company_id) {
+    ElMessage.warning('不能迁移到同一家公司'); return
+  }
+  migrateLoading.value = true
+  try {
+    await admin.merchants.transfer(migrateTarget.value.id, { targetTenantId: migrateForm.value.targetTenantId })
+    ElMessage.success('迁移成功')
+    showMigrateDialog.value = false
+    // 刷新商家列表
+    const data = await admin.merchants.list({ tenantId: detailTarget.value.company_id })
+    detailMerchants.value = data?.list || []
+    fetchCompanies()
+  } catch (e) { console.error(e) }
+  finally { migrateLoading.value = false }
 }
 
 const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
@@ -400,7 +516,7 @@ onMounted(() => { fetchCompanies() })
   font-size: var(--font-xs); color: var(--text-2);
   margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.08em;
 }
-.form-item .input { width: 100%; }
+.form-item .input { width: 100%; color: #000; background: #fff; }
 
 .recharge-info {
   display: flex; justify-content: space-between; align-items: center;
@@ -440,6 +556,91 @@ onMounted(() => { fetchCompanies() })
 }
 
 .mono { font-family: var(--font-mono); }
+
+.dialog-lg { width: 24rem; }
+
+.merchants-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.merchants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.merchant-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.625rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.merchant-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.merchant-name {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--text);
+}
+
+.merchant-balance {
+  font-size: 0.55rem;
+  color: var(--text-3);
+}
+
+.merchant-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.merchants-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--font-xs);
+}
+
+.migrate-info {
+  padding: 0.5rem 0.625rem;
+  background: rgba(139,92,246,0.1);
+  border: 1px solid rgba(139,92,246,0.2);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.75rem;
+  font-size: var(--font-xs);
+  color: #8b5cf6;
+}
+
+.btn-danger {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #ef4444;
+}
+.btn-danger:hover {
+  background: rgba(239,68,68,0.2);
+  border-color: rgba(239,68,68,0.5);
+}
+
+.input-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='0.5rem' height='0.5rem' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  padding-right: 1.25rem;
+  cursor: pointer;
+}
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(6px); }

@@ -64,7 +64,7 @@ const routes = [
       {
         path: 'sensitive',
         name: 'AdminSensitive',
-        component: () => import('@/views/admin/SensitiveWords.vue')
+        component: () => import('@/views/admin/RiskRules.vue')
       }
     ]
   },

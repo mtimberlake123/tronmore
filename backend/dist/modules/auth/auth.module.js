@@ -14,6 +14,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const auth_controller_1 = require("./auth.controller");
 const auth_service_1 = require("./auth.service");
 const jwt_strategy_1 = require("./jwt.strategy");
+const api_key_guard_1 = require("./api-key.guard");
 const tenant_entity_1 = require("./tenant.entity");
 let AuthModule = class AuthModule {
 };
@@ -29,8 +30,8 @@ exports.AuthModule = AuthModule = __decorate([
             }),
         ],
         controllers: [auth_controller_1.AuthController],
-        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy],
-        exports: [auth_service_1.AuthService],
+        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, api_key_guard_1.ApiKeyGuard],
+        exports: [auth_service_1.AuthService, api_key_guard_1.ApiKeyGuard],
     })
 ], AuthModule);
 //# sourceMappingURL=auth.module.js.map

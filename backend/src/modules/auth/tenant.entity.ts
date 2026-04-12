@@ -32,6 +32,9 @@ export class Tenant {
   @Column({ name: 'is_admin', default: false })
   isAdmin: boolean; // 是否为平台管理员
 
+  @Column({ name: 'api_key', unique: true, nullable: true })
+  apiKey: string; // API Key
+
   @Column({ default: 'user' })
   role: string; // 角色: user, admin, operator, finance
 

@@ -31,6 +31,18 @@ __decorate([
     __metadata("design:type", Number)
 ], SensitiveWord.prototype, "level", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], SensitiveWord.prototype, "rule", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: true }),
+    __metadata("design:type", Boolean)
+], SensitiveWord.prototype, "active", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], SensitiveWord.prototype, "paramName", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)({ name: 'created_at' }),
     __metadata("design:type", Date)
 ], SensitiveWord.prototype, "createdAt", void 0);

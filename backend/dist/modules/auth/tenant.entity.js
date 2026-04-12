@@ -55,6 +55,10 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Tenant.prototype, "isAdmin", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'api_key', unique: true, nullable: true }),
+    __metadata("design:type", String)
+], Tenant.prototype, "apiKey", void 0);
+__decorate([
     (0, typeorm_1.Column)({ default: 'user' }),
     __metadata("design:type", String)
 ], Tenant.prototype, "role", void 0);

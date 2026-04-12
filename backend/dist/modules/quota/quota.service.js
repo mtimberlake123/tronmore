@@ -113,6 +113,19 @@ let QuotaService = class QuotaService {
             total,
         };
     }
+    async getBalance(user) {
+        const tenant = await this.tenantRepository.findOne({
+            where: { tenantId: user.tenantId },
+        });
+        if (!tenant) {
+            throw new common_1.BadRequestException('账号不存在');
+        }
+        return {
+            balance: tenant.balance,
+            total_quota: tenant.totalQuota,
+            used_quota: tenant.usedQuota,
+        };
+    }
     async consume(merchantId, amount = 1) {
         const merchant = await this.merchantRepository.findOne({
             where: { merchantId },

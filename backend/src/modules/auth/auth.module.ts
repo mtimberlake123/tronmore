@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
+import { ApiKeyGuard } from './api-key.guard';
 import { Tenant } from './tenant.entity';
 
 @Module({
@@ -17,7 +18,7 @@ import { Tenant } from './tenant.entity';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  providers: [AuthService, JwtStrategy, ApiKeyGuard],
+  exports: [AuthService, ApiKeyGuard],
 })
 export class AuthModule {}

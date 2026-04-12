@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Merchant } from '../merchant/merchant.entity';
 import { Generation } from '../generator/generation.entity';
 import { AnalyticsLog } from '../analytics/analytics-log.entity';
+import { SensitiveWord } from '../admin/sensitive-word.entity';
 import { AiService } from '../ai/ai.service';
 
 @Injectable()
@@ -16,6 +17,8 @@ export class H5Service {
     private generationRepository: Repository<Generation>,
     @InjectRepository(AnalyticsLog)
     private analyticsRepository: Repository<AnalyticsLog>,
+    @InjectRepository(SensitiveWord)
+    private sensitiveWordRepository: Repository<SensitiveWord>,
     private aiService: AiService,
   ) {}
 
@@ -56,7 +59,7 @@ export class H5Service {
     }
 
     // 2. 构建Prompt
-    const prompt = this.buildPrompt(merchant, type);
+    const prompt = await this.buildPrompt(merchant, type);
 
     // 3. 调用AI生成
     let content: string;
@@ -68,7 +71,7 @@ export class H5Service {
     }
 
     // 4. 检查敏感词
-    if (this.containsSensitiveWords(content)) {
+    if (await this.containsSensitiveWords(content)) {
       throw new BadRequestException('内容优化中，请重试', '4003');
     }
 
@@ -174,7 +177,7 @@ export class H5Service {
   /**
    * 构建Prompt
    */
-  private buildPrompt(merchant: Merchant, type: string): string {
+  private async buildPrompt(merchant: Merchant, type: string): Promise<string> {
     const industryPrompts = {
       catering: '你是一个专业的餐饮营销文案专家，文风活泼、接地气，擅长写吸引人的评价。',
       beauty: '你是一个专业的美业营销文案专家，文风精致，擅长写高端感的评价。',
@@ -199,7 +202,19 @@ export class H5Service {
       prompt += `激励活动：${merchant.incentive}\n`;
     }
 
-    prompt += '\n【重要】请确保内容不包含敏感词，文风自然，避免AI味。';
+    // 注入风险规则
+    const activeRules = await this.sensitiveWordRepository.find({ where: { active: true } });
+    if (activeRules.length > 0) {
+      const ruleConstraints = activeRules
+        .filter(r => r.rule)
+        .map(r => `- ${r.rule}`)
+        .join('\n');
+      if (ruleConstraints) {
+        prompt += `\n\n【合规要求】请严格遵守以下规则：\n${ruleConstraints}`;
+      }
+    }
+
+    prompt += '\n\n【重要】请确保内容符合平台规范，文风自然，避免AI味。';
 
     return prompt;
   }
@@ -212,11 +227,12 @@ export class H5Service {
   }
 
   /**
-   * 敏感词检测（简化）
+   * 敏感词检测（使用数据库规则）
    */
-  private containsSensitiveWords(text: string): boolean {
-    const words = ['测试', '示范', '占位'];
-    return words.some(word => text.includes(word));
+  private async containsSensitiveWords(text: string): Promise<boolean> {
+    const rules = await this.sensitiveWordRepository.find({ where: { active: true } });
+    if (!rules.length) return false;
+    return rules.some(r => r.word && text.includes(r.word));
   }
 
   /**

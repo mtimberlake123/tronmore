@@ -2,6 +2,17 @@ import { QuotaService } from './quota.service';
 export declare class QuotaController {
     private quotaService;
     constructor(quotaService: QuotaService);
+    getBalance(req: any): Promise<{
+        code: number;
+        message: string;
+        data: {
+            balance: number;
+            total_quota: number;
+            used_quota: number;
+        };
+        timestamp: number;
+        success: boolean;
+    }>;
     allocate(id: string, body: {
         amount: number;
     }): Promise<{

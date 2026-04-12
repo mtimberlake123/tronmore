@@ -18,6 +18,7 @@ export declare class AdminController {
                 used_quota: number;
                 status: number;
                 created_at: Date;
+                merchants: number;
             }[];
             total: number;
         };
@@ -105,6 +106,9 @@ export declare class AdminController {
                 word: string;
                 category: string;
                 level: number;
+                rule: string;
+                active: boolean;
+                paramName: string;
                 created_at: Date;
             }[];
             total: number;
@@ -114,6 +118,9 @@ export declare class AdminController {
         word: string;
         category: string;
         level?: number;
+        rule?: string;
+        active?: boolean;
+        paramName?: string;
     }): Promise<{
         code: number;
         data: {
@@ -121,11 +128,37 @@ export declare class AdminController {
             word: string;
             category: string;
             level: number;
+            rule: string;
+            active: boolean;
+            paramName: string;
         };
     }>;
     deleteSensitiveWord(id: string): Promise<{
         message: string;
         code: number;
+    }>;
+    updateSensitiveWord(id: string, body: {
+        word?: string;
+        category?: string;
+        level?: number;
+        rule?: string;
+        active?: boolean;
+        paramName?: string;
+    }): Promise<{
+        code: number;
+        data: {
+            id: number;
+            word: string;
+            category: string;
+            level: number;
+            rule: string;
+            active: boolean;
+            paramName: string;
+        };
+    }>;
+    getActiveRules(): Promise<{
+        code: number;
+        data: import("./sensitive-word.entity").SensitiveWord[];
     }>;
     createSubAccount(id: string, body: {
         username: string;
@@ -139,5 +172,36 @@ export declare class AdminController {
             username: string;
             role: string;
         };
+    }>;
+    getMerchants(query: {
+        tenantId?: string;
+        page?: number;
+        page_size?: number;
+    }): Promise<{
+        code: number;
+        data: {
+            list: {
+                id: string;
+                name: string;
+                tenantId: string;
+                companyName: string;
+                balance: number;
+                created_at: Date;
+            }[];
+            total: number;
+        };
+    }>;
+    deleteMerchant(id: string): Promise<{
+        message: string;
+        code: number;
+    }>;
+    transferMerchant(id: string, body: {
+        targetTenantId: string;
+    }): Promise<{
+        message: string;
+        merchant_id: string;
+        from_tenant: string;
+        to_tenant: string;
+        code: number;
     }>;
 }

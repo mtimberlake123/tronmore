@@ -31,6 +31,11 @@ export declare class QuotaService {
         }[];
         total: number;
     }>;
+    getBalance(user: any): Promise<{
+        balance: number;
+        total_quota: number;
+        used_quota: number;
+    }>;
     consume(merchantId: string, amount?: number): Promise<{
         before: number;
         after: number;

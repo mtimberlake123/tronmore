@@ -21,13 +21,15 @@ const generation_entity_1 = require("./generation.entity");
 const merchant_entity_1 = require("../merchant/merchant.entity");
 const merchant_image_entity_1 = require("../warehouse/merchant-image.entity");
 const analytics_log_entity_1 = require("../analytics/analytics-log.entity");
+const sensitive_word_entity_1 = require("../admin/sensitive-word.entity");
 const ai_service_1 = require("../ai/ai.service");
 let GeneratorService = class GeneratorService {
-    constructor(generationRepository, merchantRepository, imageRepository, analyticsRepository, aiService) {
+    constructor(generationRepository, merchantRepository, imageRepository, analyticsRepository, sensitiveWordRepository, aiService) {
         this.generationRepository = generationRepository;
         this.merchantRepository = merchantRepository;
         this.imageRepository = imageRepository;
         this.analyticsRepository = analyticsRepository;
+        this.sensitiveWordRepository = sensitiveWordRepository;
         this.aiService = aiService;
     }
     async generate(tenantId, merchantId, type, options) {
@@ -49,7 +51,7 @@ let GeneratorService = class GeneratorService {
             console.error('AI服务调用失败:', error);
             throw new common_1.BadRequestException('AI服务异常', '4002');
         }
-        if (this.containsSensitiveWords(generatedContent.text)) {
+        if (await this.containsSensitiveWords(generatedContent.text)) {
             throw new common_1.BadRequestException('内容包含敏感词', '4003');
         }
         const { images, imageIds } = await this.matchImages(merchantId, type, options.imageCount || 6);
@@ -118,16 +120,28 @@ let GeneratorService = class GeneratorService {
         if (type === 'note' && options.topics && options.topics.length > 0) {
             prompt += `\n添加话题：${options.topics.join(' ')}\n`;
         }
-        prompt += `\n\n【重要】请确保内容：\n1. 不包含任何敏感词\n2. 不夸大宣传\n3. 文风自然，避免AI味\n4. 符合平台社区规范`;
+        const activeRules = await this.sensitiveWordRepository.find({ where: { active: true } });
+        if (activeRules.length > 0) {
+            const ruleConstraints = activeRules
+                .filter(r => r.rule)
+                .map(r => `- ${r.rule}`)
+                .join('\n');
+            if (ruleConstraints) {
+                prompt += `\n\n【合规要求】请严格遵守以下规则：\n${ruleConstraints}`;
+            }
+        }
+        prompt += `\n\n【重要】请确保内容：\n1. 不夸大宣传\n2. 文风自然，避免AI味\n3. 符合平台社区规范`;
         return prompt;
     }
     async callAIService(prompt, type) {
         const text = await this.aiService.generate(prompt);
         return { text };
     }
-    containsSensitiveWords(text) {
-        const sensitiveWords = ['敏感词1', '敏感词2', '测试敏感词'];
-        return sensitiveWords.some(word => text.includes(word));
+    async containsSensitiveWords(text) {
+        const rules = await this.sensitiveWordRepository.find({ where: { active: true } });
+        if (!rules.length)
+            return false;
+        return rules.some(r => r.word && text.includes(r.word));
     }
     async matchImages(merchantId, type, count) {
         const productImages = await this.imageRepository.find({
@@ -199,7 +213,9 @@ exports.GeneratorService = GeneratorService = __decorate([
     __param(1, (0, typeorm_1.InjectRepository)(merchant_entity_1.Merchant)),
     __param(2, (0, typeorm_1.InjectRepository)(merchant_image_entity_1.MerchantImage)),
     __param(3, (0, typeorm_1.InjectRepository)(analytics_log_entity_1.AnalyticsLog)),
+    __param(4, (0, typeorm_1.InjectRepository)(sensitive_word_entity_1.SensitiveWord)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

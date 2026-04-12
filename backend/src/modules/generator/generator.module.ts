@@ -6,9 +6,10 @@ import { Generation } from './generation.entity';
 import { Merchant } from '../merchant/merchant.entity';
 import { MerchantImage } from '../warehouse/merchant-image.entity';
 import { AnalyticsLog } from '../analytics/analytics-log.entity';
+import { SensitiveWord } from '../admin/sensitive-word.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Generation, Merchant, MerchantImage, AnalyticsLog])],
+  imports: [TypeOrmModule.forFeature([Generation, Merchant, MerchantImage, AnalyticsLog, SensitiveWord])],
   controllers: [GeneratorController],
   providers: [GeneratorService],
   exports: [GeneratorService],

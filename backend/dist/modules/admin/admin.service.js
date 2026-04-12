@@ -18,11 +18,13 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const uuid_1 = require("uuid");
 const tenant_entity_1 = require("../auth/tenant.entity");
+const merchant_entity_1 = require("../merchant/merchant.entity");
 const prompt_template_entity_1 = require("./prompt-template.entity");
 const sensitive_word_entity_1 = require("./sensitive-word.entity");
 let AdminService = class AdminService {
-    constructor(tenantRepository, promptRepository, sensitiveRepository) {
+    constructor(tenantRepository, merchantRepository, promptRepository, sensitiveRepository) {
         this.tenantRepository = tenantRepository;
+        this.merchantRepository = merchantRepository;
         this.promptRepository = promptRepository;
         this.sensitiveRepository = sensitiveRepository;
     }
@@ -38,6 +40,20 @@ let AdminService = class AdminService {
         query.orderBy('t.createdAt', 'DESC');
         query.skip((pageNum - 1) * safePageSize).take(safePageSize);
         const [list, total] = await query.getManyAndCount();
+        const tenantIds = list.map(t => t.tenantId);
+        let countMap = {};
+        if (tenantIds.length > 0) {
+            const merchantCounts = await this.merchantRepository
+                .createQueryBuilder('m')
+                .select('m.tenantId', 'tenantId')
+                .addSelect('COUNT(*)', 'count')
+                .where('m.tenantId IN (:...tenantIds)', { tenantIds })
+                .groupBy('m.tenantId')
+                .getRawMany();
+            merchantCounts.forEach(mc => {
+                countMap[mc.tenantId] = parseInt(mc.count);
+            });
+        }
         return {
             list: list.map(t => ({
                 company_id: t.tenantId,
@@ -48,6 +64,7 @@ let AdminService = class AdminService {
                 used_quota: t.usedQuota,
                 status: t.status,
                 created_at: t.createdAt,
+                merchants: countMap[t.tenantId] || 0,
             })),
             total,
         };
@@ -160,6 +177,9 @@ let AdminService = class AdminService {
             is_active: template.isActive,
         };
     }
+    async getActiveRules() {
+        return this.sensitiveRepository.find({ where: { active: true } });
+    }
     async getSensitiveWords(params) {
         const { category, level, page = 1, page_size = 20 } = params;
         const pageNum = typeof page === 'string' ? parseInt(page) : page;
@@ -181,6 +201,9 @@ let AdminService = class AdminService {
                 word: s.word,
                 category: s.category,
                 level: s.level,
+                rule: s.rule || '',
+                active: s.active !== false,
+                paramName: s.paramName || '',
                 created_at: s.createdAt,
             })),
             total,
@@ -195,6 +218,9 @@ let AdminService = class AdminService {
             word: data.word,
             category: data.category,
             level: data.level || 1,
+            rule: data.rule || '',
+            active: data.active !== false,
+            paramName: data.paramName || '',
         });
         await this.sensitiveRepository.save(word);
         return {
@@ -202,6 +228,9 @@ let AdminService = class AdminService {
             word: word.word,
             category: word.category,
             level: word.level,
+            rule: word.rule || '',
+            active: word.active,
+            paramName: word.paramName || '',
         };
     }
     async deleteSensitiveWord(id) {
@@ -212,6 +241,34 @@ let AdminService = class AdminService {
         await this.sensitiveRepository.remove(word);
         return { message: '删除成功' };
     }
+    async updateSensitiveWord(id, data) {
+        const word = await this.sensitiveRepository.findOne({ where: { id } });
+        if (!word) {
+            throw new common_1.NotFoundException('规则不存在');
+        }
+        if (data.word !== undefined)
+            word.word = data.word;
+        if (data.category !== undefined)
+            word.category = data.category;
+        if (data.level !== undefined)
+            word.level = data.level;
+        if (data.rule !== undefined)
+            word.rule = data.rule;
+        if (data.active !== undefined)
+            word.active = data.active;
+        if (data.paramName !== undefined)
+            word.paramName = data.paramName;
+        await this.sensitiveRepository.save(word);
+        return {
+            id: word.id,
+            word: word.word,
+            category: word.category,
+            level: word.level,
+            rule: word.rule || '',
+            active: word.active,
+            paramName: word.paramName || '',
+        };
+    }
     async createSubAccount(companyId, data) {
         return {
             message: '子账号功能待实现',
@@ -220,14 +277,76 @@ let AdminService = class AdminService {
             role: data.role,
         };
     }
+    async getMerchants(params) {
+        const { tenantId, page = 1, page_size = 20 } = params;
+        const pageNum = typeof page === 'string' ? parseInt(page) : page;
+        const pageSizeNum = typeof page_size === 'string' ? parseInt(page_size) : page_size;
+        const safePageSize = Math.min(pageSizeNum || 20, 100);
+        const query = this.merchantRepository.createQueryBuilder('m');
+        if (tenantId) {
+            query.where('m.tenantId = :tenantId', { tenantId });
+        }
+        query.orderBy('m.createdAt', 'DESC');
+        query.skip((pageNum - 1) * safePageSize).take(safePageSize);
+        const [list, total] = await query.getManyAndCount();
+        const tenantIds = [...new Set(list.map(m => m.tenantId))];
+        let tenantMap = {};
+        if (tenantIds.length > 0) {
+            const tenants = await this.tenantRepository
+                .createQueryBuilder('t')
+                .select(['t.tenantId', 't.name'])
+                .where('t.tenantId IN (:...ids)', { ids: tenantIds })
+                .getRawMany();
+            tenants.forEach(t => { tenantMap[t.tenantId] = t.name; });
+        }
+        return {
+            list: list.map(m => ({
+                id: m.merchantId,
+                name: m.name,
+                tenantId: m.tenantId,
+                companyName: tenantMap[m.tenantId] || '',
+                balance: m.balance,
+                created_at: m.createdAt,
+            })),
+            total,
+        };
+    }
+    async deleteMerchant(merchantId) {
+        const merchant = await this.merchantRepository.findOne({ where: { merchantId } });
+        if (!merchant) {
+            throw new common_1.NotFoundException('商家不存在');
+        }
+        await this.merchantRepository.remove(merchant);
+        return { message: '删除成功' };
+    }
+    async transferMerchant(merchantId, targetTenantId) {
+        const merchant = await this.merchantRepository.findOne({ where: { merchantId } });
+        if (!merchant) {
+            throw new common_1.NotFoundException('商家不存在');
+        }
+        const targetTenant = await this.tenantRepository.findOne({ where: { tenantId: targetTenantId } });
+        if (!targetTenant) {
+            throw new common_1.NotFoundException('目标公司不存在');
+        }
+        merchant.tenantId = targetTenantId;
+        await this.merchantRepository.save(merchant);
+        return {
+            message: '迁移成功',
+            merchant_id: merchantId,
+            from_tenant: merchant.tenantId,
+            to_tenant: targetTenantId,
+        };
+    }
 };
 exports.AdminService = AdminService;
 exports.AdminService = AdminService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(tenant_entity_1.Tenant)),
-    __param(1, (0, typeorm_1.InjectRepository)(prompt_template_entity_1.PromptTemplate)),
-    __param(2, (0, typeorm_1.InjectRepository)(sensitive_word_entity_1.SensitiveWord)),
+    __param(1, (0, typeorm_1.InjectRepository)(merchant_entity_1.Merchant)),
+    __param(2, (0, typeorm_1.InjectRepository)(prompt_template_entity_1.PromptTemplate)),
+    __param(3, (0, typeorm_1.InjectRepository)(sensitive_word_entity_1.SensitiveWord)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository])
 ], AdminService);

@@ -6,6 +6,7 @@ import { Generation } from './generation.entity';
 import { Merchant } from '../merchant/merchant.entity';
 import { MerchantImage } from '../warehouse/merchant-image.entity';
 import { AnalyticsLog } from '../analytics/analytics-log.entity';
+import { SensitiveWord } from '../admin/sensitive-word.entity';
 import { AiService } from '../ai/ai.service';
 
 @Injectable()
@@ -19,6 +20,8 @@ export class GeneratorService {
     private imageRepository: Repository<MerchantImage>,
     @InjectRepository(AnalyticsLog)
     private analyticsRepository: Repository<AnalyticsLog>,
+    @InjectRepository(SensitiveWord)
+    private sensitiveWordRepository: Repository<SensitiveWord>,
     private aiService: AiService,
   ) {}
 
@@ -47,8 +50,8 @@ export class GeneratorService {
       throw new BadRequestException('AI服务异常', '4002');
     }
 
-    // 4. 检查内容是否包含敏感词（这里简化处理，实际应该调用敏感词检测服务）
-    if (this.containsSensitiveWords(generatedContent.text)) {
+    // 4. 检查内容是否包含敏感词
+    if (await this.containsSensitiveWords(generatedContent.text)) {
       throw new BadRequestException('内容包含敏感词', '4003');
     }
 
@@ -140,8 +143,20 @@ export class GeneratorService {
       prompt += `\n添加话题：${options.topics.join(' ')}\n`;
     }
 
+    // 注入风险规则
+    const activeRules = await this.sensitiveWordRepository.find({ where: { active: true } });
+    if (activeRules.length > 0) {
+      const ruleConstraints = activeRules
+        .filter(r => r.rule)
+        .map(r => `- ${r.rule}`)
+        .join('\n');
+      if (ruleConstraints) {
+        prompt += `\n\n【合规要求】请严格遵守以下规则：\n${ruleConstraints}`;
+      }
+    }
+
     // 添加安全约束
-    prompt += `\n\n【重要】请确保内容：\n1. 不包含任何敏感词\n2. 不夸大宣传\n3. 文风自然，避免AI味\n4. 符合平台社区规范`;
+    prompt += `\n\n【重要】请确保内容：\n1. 不夸大宣传\n2. 文风自然，避免AI味\n3. 符合平台社区规范`;
 
     return prompt;
   }
@@ -152,11 +167,10 @@ export class GeneratorService {
     return { text };
   }
 
-  private containsSensitiveWords(text: string): boolean {
-    // TODO: 集成真实的敏感词检测服务
-    // 这里简化处理，实际应该调用敏感词库
-    const sensitiveWords = ['敏感词1', '敏感词2', '测试敏感词']; // 示例
-    return sensitiveWords.some(word => text.includes(word));
+  private async containsSensitiveWords(text: string): Promise<boolean> {
+    const rules = await this.sensitiveWordRepository.find({ where: { active: true } });
+    if (!rules.length) return false;
+    return rules.some(r => r.word && text.includes(r.word));
   }
 
   private async matchImages(merchantId: string, type: string, count: number): Promise<{ images: any[], imageIds: number[] }> {

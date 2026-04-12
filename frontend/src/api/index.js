@@ -67,9 +67,7 @@ export const merchant = {
 export const warehouse = {
   storageCheck: (id) => request.get(`/merchants/${id}/storage/check`),
   images: (id, params) => request.get(`/merchants/${id}/images`, { params }),
-  upload: (id, formData) => request.post(`/merchants/${id}/images`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
+  upload: (id, data) => request.post(`/merchants/${id}/images`, data),
   delete: (id, imageId) => request.delete(`/merchants/${id}/images/${imageId}`),
   batchCheck: (id) => request.post(`/merchants/${id}/images/batch-check`),
   settings: (id, data) => request.put(`/merchants/${id}/image-settings`, data)
@@ -77,7 +75,22 @@ export const warehouse = {
 
 export const quota = {
   allocate: (id, data) => request.post(`/merchants/${id}/quota/allocate`, data),
-  logs: (params) => request.get('/quota/logs', { params })
+  logs: (params) => request.get('/quota/logs', { params }),
+  // 额度查询（外部API）- API返回20000000对应40元，换算比例500000
+  balance: () => {
+    const apiKey = localStorage.getItem('apiKey') || 'sk-MtssNtmuPIELmwWO5wY8bK3TOfGGofGjmOwmxCQEOXqZCVN1'
+    return axios.get('https://api.chatfire.site/v1/chatfire/balance', {
+      headers: { Authorization: `Bearer ${apiKey}` }
+    }).then(res => {
+      const data = res.data
+      if (data && data.data && data.data.availableBalance !== undefined) {
+        // 换算：API值 / 500000 = 元（保留2位小数）
+        data.data.availableBalance = (data.data.availableBalance / 500000).toFixed(2)
+        data.data.quotaBalance = ((data.data.quotaBalance || 0) / 500000).toFixed(2)
+      }
+      return data
+    })
+  }
 }
 
 export const generator = {
@@ -95,11 +108,13 @@ export const h5 = {
 export const reference = {
   notes: {
     list: (params) => request.get('/references/notes', { params }),
-    create: (data) => request.post('/references/notes', data)
+    create: (data) => request.post('/references/notes', data),
+    delete: (id) => request.delete(`/references/notes/${id}`)
   },
   reviews: {
     list: (params) => request.get('/references/reviews', { params }),
-    create: (data) => request.post('/references/reviews', data)
+    create: (data) => request.post('/references/reviews', data),
+    delete: (id) => request.delete(`/references/reviews/${id}`)
   }
 }
 
@@ -115,16 +130,24 @@ export const admin = {
     recharge: (id, data) => request.post(`/admin/companies/${id}/recharge`, data),
     subAccounts: (id, data) => request.post(`/admin/companies/${id}/sub-accounts`, data)
   },
+  // 商家
+  merchants: {
+    list: (params) => request.get('/admin/merchants', { params }),
+    delete: (id) => request.delete(`/admin/merchants/${id}`),
+    transfer: (id, data) => request.post(`/admin/merchants/${id}/transfer`, data)
+  },
   // Prompt模板
   prompts: {
     list: (params) => request.get('/admin/prompts', { params }),
     create: (data) => request.post('/admin/prompts', data),
     update: (id, data) => request.put(`/admin/prompts/${id}`, data)
   },
-  // 敏感词
+  // 敏感词/风险规则
   sensitiveWords: {
     list: (params) => request.get('/admin/sensitive-words', { params }),
     create: (data) => request.post('/admin/sensitive-words', data),
-    delete: (id) => request.delete(`/admin/sensitive-words/${id}`)
+    update: (id, data) => request.put(`/admin/sensitive-words/${id}`, data),
+    delete: (id) => request.delete(`/admin/sensitive-words/${id}`),
+    activeRules: () => request.get('/admin/rules/active')
   }
 }

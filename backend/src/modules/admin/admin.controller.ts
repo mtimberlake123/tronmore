@@ -125,7 +125,7 @@ export class AdminController {
   }
 
   /**
-   * 添加敏感词
+   * 添加敏感词/风险规则
    * POST /admin/sensitive-words
    */
   @Post('sensitive-words')
@@ -133,6 +133,9 @@ export class AdminController {
     word: string;
     category: string;
     level?: number;
+    rule?: string;
+    active?: boolean;
+    paramName?: string;
   }) {
     return {
       code: 200,
@@ -153,6 +156,40 @@ export class AdminController {
   }
 
   /**
+   * 更新敏感词/风险规则
+   * PUT /admin/sensitive-words/:id
+   */
+  @Put('sensitive-words/:id')
+  async updateSensitiveWord(
+    @Param('id') id: string,
+    @Body() body: {
+      word?: string;
+      category?: string;
+      level?: number;
+      rule?: string;
+      active?: boolean;
+      paramName?: string;
+    },
+  ) {
+    return {
+      code: 200,
+      data: await this.adminService.updateSensitiveWord(parseInt(id), body),
+    };
+  }
+
+  /**
+   * 获取启用的风险规则
+   * GET /admin/rules/active
+   */
+  @Get('rules/active')
+  async getActiveRules() {
+    return {
+      code: 200,
+      data: await this.adminService.getActiveRules(),
+    };
+  }
+
+  /**
    * 创建子账号
    * POST /admin/companies/:id/sub-accounts
    */
@@ -168,6 +205,49 @@ export class AdminController {
     return {
       code: 200,
       data: await this.adminService.createSubAccount(id, body),
+    };
+  }
+
+  /**
+   * 商家列表（支持按租户筛选）
+   * GET /admin/merchants
+   */
+  @Get('merchants')
+  async getMerchants(@Query() query: {
+    tenantId?: string;
+    page?: number;
+    page_size?: number;
+  }) {
+    return {
+      code: 200,
+      data: await this.adminService.getMerchants(query),
+    };
+  }
+
+  /**
+   * 删除商家
+   * DELETE /admin/merchants/:id
+   */
+  @Delete('merchants/:id')
+  async deleteMerchant(@Param('id') id: string) {
+    return {
+      code: 200,
+      ...(await this.adminService.deleteMerchant(id)),
+    };
+  }
+
+  /**
+   * 迁移商家
+   * POST /admin/merchants/:id/transfer
+   */
+  @Post('merchants/:id/transfer')
+  async transferMerchant(
+    @Param('id') id: string,
+    @Body() body: { targetTenantId: string },
+  ) {
+    return {
+      code: 200,
+      ...(await this.adminService.transferMerchant(id, body.targetTenantId)),
     };
   }
 }

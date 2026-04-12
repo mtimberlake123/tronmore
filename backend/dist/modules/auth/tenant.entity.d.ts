@@ -9,6 +9,7 @@ export declare class Tenant {
     balance: number;
     status: number;
     isAdmin: boolean;
+    apiKey: string;
     role: string;
     createdAt: Date;
     updatedAt: Date;

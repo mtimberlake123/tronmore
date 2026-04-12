@@ -3,5 +3,8 @@ export declare class SensitiveWord {
     word: string;
     category: string;
     level: number;
+    rule: string;
+    active: boolean;
+    paramName: string;
     createdAt: Date;
 }

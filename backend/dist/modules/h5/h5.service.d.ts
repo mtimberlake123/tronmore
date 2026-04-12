@@ -2,13 +2,15 @@ import { Repository } from 'typeorm';
 import { Merchant } from '../merchant/merchant.entity';
 import { Generation } from '../generator/generation.entity';
 import { AnalyticsLog } from '../analytics/analytics-log.entity';
+import { SensitiveWord } from '../admin/sensitive-word.entity';
 import { AiService } from '../ai/ai.service';
 export declare class H5Service {
     private merchantRepository;
     private generationRepository;
     private analyticsRepository;
+    private sensitiveWordRepository;
     private aiService;
-    constructor(merchantRepository: Repository<Merchant>, generationRepository: Repository<Generation>, analyticsRepository: Repository<AnalyticsLog>, aiService: AiService);
+    constructor(merchantRepository: Repository<Merchant>, generationRepository: Repository<Generation>, analyticsRepository: Repository<AnalyticsLog>, sensitiveWordRepository: Repository<SensitiveWord>, aiService: AiService);
     getMerchantConfig(merchantId: string): Promise<{
         merchant_id: string;
         name: string;

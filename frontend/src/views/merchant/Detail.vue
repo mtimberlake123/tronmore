@@ -1,190 +1,222 @@
 <template>
-  <div class="max-w-7xl mx-auto">
+  <div class="merchant-detail">
     <!-- 返回 -->
     <el-button text @click="router.push('/merchants')" class="mb-6 text-on-surface-variant hover:text-white transition-colors">
       <ArrowLeft class="w-4 h-4 mr-2" /> 返回商家列表
     </el-button>
 
-    <el-tabs v-model="activeTab" class="detail-tabs">
-      <!-- 商家信息 -->
-      <el-tab-pane label="商家信息" name="config">
-        <div class="glass-card p-8 rounded-2xl">
-          <el-form :model="merchantForm" label-width="120px" class="form-dark">
-            <el-form-item label="Logo">
-              <ImageUploader v-model="merchantForm.logo" />
-            </el-form-item>
-            <el-form-item label="店铺名称">
-              <el-input v-model="merchantForm.name" class="input-dark" />
-            </el-form-item>
-            <el-form-item label="服务/套餐/产品">
-              <el-input v-model="merchantForm.productsText" type="textarea" placeholder="逗号分隔" class="input-dark" />
-            </el-form-item>
-            <el-form-item label="特色/宣传点">
-              <el-input v-model="merchantForm.featuresText" type="textarea" placeholder="逗号分隔" class="input-dark" />
-            </el-form-item>
-            <el-form-item label="评价生成">
-              <el-switch v-model="merchantForm.enableReview" class="mr-3" />
-              <span class="switch-label">{{ merchantForm.enableReview ? '已启用' : '已禁用' }}</span>
-            </el-form-item>
-            <el-form-item v-if="merchantForm.enableReview" label="预设要求">
-              <el-input v-model="merchantForm.aiPromptExt" type="textarea" placeholder="输入预设要求" class="input-dark" />
-            </el-form-item>
-            <el-form-item label="笔记生成">
-              <el-switch v-model="merchantForm.enableNote" class="mr-3" />
-              <span class="switch-label">{{ merchantForm.enableNote ? '已启用' : '已禁用' }}</span>
-            </el-form-item>
-            <template v-if="merchantForm.enableNote">
-              <el-form-item label="预设要求">
-                <el-input v-model="merchantForm.notePromptExt" type="textarea" placeholder="输入预设要求" class="input-dark" />
-              </el-form-item>
-              <el-form-item label="自定义话题">
-                <el-input v-model="merchantForm.noteTopic" type="textarea" placeholder="输入自定义话题" class="input-dark" />
-              </el-form-item>
-              <el-form-item label="仿写笔记">
-                <el-input v-model="merchantForm.noteCopy" type="textarea" placeholder="输入仿写笔记" class="input-dark" />
-              </el-form-item>
-            </template>
-            <el-form-item label="商家微信">
-              <ImageUploader v-model="merchantForm.wx_url" />
-            </el-form-item>
-            <el-form-item label="商家抖音">
-              <el-input v-model="merchantForm.dy_url" placeholder="输入抖音主页URL" class="input-dark" />
-            </el-form-item>
-            <el-form-item label="商家地址">
-              <el-input v-model="merchantForm.address" placeholder="输入商家地址" class="input-dark" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="saveConfig" class="btn-primary">保存配置</el-button>
-            </el-form-item>
-          </el-form>
-        </div>
-      </el-tab-pane>
+    <!-- 两列布局：3:1 占比 -->
+    <div class="detail-grid">
+      <!-- 左侧：商家信息 (280px) -->
+      <div class="side-content">
+        <MerchantInfo :merchant="merchantInfo" :active-module="activeModule" @module-click="handleModuleClick" />
+      </div>
 
-      <!-- 图库管理 -->
-      <el-tab-pane label="图库管理" name="warehouse">
-        <div class="glass-card p-8 rounded-2xl">
-          <div class="flex justify-end mb-4">
-            <el-button size="small" @click="showSettings = true">设置</el-button>
-          </div>
-          <el-tabs class="warehouse-tabs">
-            <el-tab-pane label="产品图">
-              <div v-if="productList.length === 0" class="empty-tip">
-                暂无服务/套餐/产品
-              </div>
-              <div v-else class="product-gallery">
-                <div v-for="product in productList" :key="product" class="product-section">
-                  <div class="product-title">{{ product }}</div>
-                  <div class="product-upload-area">
+      <!-- 右侧：主内容区 (3/4) -->
+      <div class="main-content">
+        <!-- 数据看板 -->
+        <DataDashboard v-if="activeModule === 'dashboard'" :stats="dashboardData" />
+
+        <!-- 模块编辑内容区 -->
+        <div v-if="activeModule && activeModule !== 'dashboard'" class="module-edit-panel glass-card p-8 rounded-2xl">
+          <!-- 商家配置 -->
+          <template v-if="activeModule === 'config'">
+            <el-form :model="merchantForm" label-width="120px" class="form-dark">
+              <el-form-item label="Logo">
+                <ImageUploader v-model="merchantForm.logo" :merchant-id="route.params.id" />
+              </el-form-item>
+              <el-form-item label="店铺名称">
+                <el-input v-model="merchantForm.name" class="input-dark" />
+              </el-form-item>
+              <el-form-item label="服务/套餐/产品">
+                <el-input v-model="merchantForm.productsText" type="textarea" placeholder="逗号分隔" class="input-dark" />
+              </el-form-item>
+              <el-form-item label="特色/宣传点">
+                <el-input v-model="merchantForm.featuresText" type="textarea" placeholder="逗号分隔" class="input-dark" />
+              </el-form-item>
+              <el-form-item label="评价生成">
+                <el-switch v-model="merchantForm.enableReview" class="mr-3" />
+                <span class="switch-label">{{ merchantForm.enableReview ? '已启用' : '已禁用' }}</span>
+              </el-form-item>
+              <el-form-item v-if="merchantForm.enableReview" label="预设要求">
+                <el-input v-model="merchantForm.aiPromptExt" type="textarea" placeholder="输入预设要求" class="input-dark" />
+              </el-form-item>
+              <el-form-item label="笔记生成">
+                <el-switch v-model="merchantForm.enableNote" class="mr-3" />
+                <span class="switch-label">{{ merchantForm.enableNote ? '已启用' : '已禁用' }}</span>
+              </el-form-item>
+              <template v-if="merchantForm.enableNote">
+                <el-form-item label="预设要求">
+                  <el-input v-model="merchantForm.notePromptExt" type="textarea" placeholder="输入预设要求" class="input-dark" />
+                </el-form-item>
+                <el-form-item label="自定义话题">
+                  <el-input v-model="merchantForm.noteTopic" type="textarea" placeholder="输入自定义话题" class="input-dark" />
+                </el-form-item>
+                <el-form-item label="仿写笔记">
+                  <el-input v-model="merchantForm.noteCopy" type="textarea" placeholder="输入仿写笔记" class="input-dark" />
+                </el-form-item>
+              </template>
+              <el-form-item label="商家微信">
+                <ImageUploader v-model="merchantForm.wx_url" />
+              </el-form-item>
+              <el-form-item label="商家抖音">
+                <el-input v-model="merchantForm.dy_url" placeholder="输入抖音主页URL" class="input-dark" />
+              </el-form-item>
+              <el-form-item label="商家地址">
+                <el-input v-model="merchantForm.address" placeholder="输入商家地址" class="input-dark" />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="saveConfig" class="btn-primary">保存配置</el-button>
+              </el-form-item>
+            </el-form>
+          </template>
+
+          <!-- 图库管理 -->
+          <template v-if="activeModule === 'warehouse'">
+            <div class="flex justify-end mb-4">
+              <el-button class="btn-tertiary" @click="showSettings = true">设置</el-button>
+            </div>
+            <el-tabs class="warehouse-tabs">
+              <el-tab-pane label="产品图">
+                <div v-if="productList.length === 0" class="empty-tip">
+                  暂无服务/套餐/产品
+                </div>
+                <div v-else class="product-gallery">
+                  <div v-for="product in productList" :key="product" class="product-section">
+                    <div class="product-title">{{ product }}</div>
+                    <div class="product-upload-area">
+                      <ImageUploader
+                        :model-value="getProductImages(product)"
+                        @update:model-value="setProductImages(product, $event)"
+                        :multiple="true"
+                        :max-count="merchantForm.productImageCount"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </el-tab-pane>
+              <el-tab-pane label="门店环境">
+                <div class="store-gallery">
+                  <div v-for="type in storeTypes" :key="type" class="store-section">
+                    <div class="store-title">{{ type }}</div>
                     <ImageUploader
-                      :model-value="getProductImages(product)"
-                      @update:model-value="setProductImages(product, $event)"
+                      :model-value="getStoreImages(type)"
+                      @update:model-value="setStoreImages(type, $event)"
                       :multiple="true"
                       :max-count="merchantForm.productImageCount"
                     />
                   </div>
                 </div>
-              </div>
-            </el-tab-pane>
-            <el-tab-pane label="门店环境">
-              <div class="store-gallery">
-                <div v-for="type in storeTypes" :key="type" class="store-section">
-                  <div class="store-title">{{ type }}</div>
-                  <ImageUploader
-                    :model-value="getStoreImages(type)"
-                    @update:model-value="setStoreImages(type, $event)"
-                    :multiple="true"
-                    :max-count="merchantForm.productImageCount"
-                  />
+              </el-tab-pane>
+              <el-tab-pane label="其他">
+                <div class="upload-section">
+                  <ImageUploader v-model="otherImages" :multiple="true" :max-count="merchantForm.productImageCount" />
                 </div>
-              </div>
-            </el-tab-pane>
-            <el-tab-pane label="其他">
-              <div class="upload-section">
-                <ImageUploader v-model="otherImages" :multiple="true" :max-count="merchantForm.productImageCount" />
-              </div>
-            </el-tab-pane>
-            <el-tab-pane label="已使用">
-              <div class="used-gallery">
-                <div v-if="usedImages.length === 0" class="empty-tip">
-                  暂无已使用的图片
-                </div>
-                <div v-else class="image-grid">
-                  <div v-for="(img, index) in usedImages" :key="index" class="image-item">
-                    <img :src="img" alt="used" class="preview-img" />
+              </el-tab-pane>
+              <el-tab-pane label="已使用">
+                <div class="used-gallery">
+                  <div v-if="usedImages.length === 0" class="empty-tip">
+                    暂无已使用的图片
+                  </div>
+                  <div v-else class="image-grid">
+                    <div v-for="(img, index) in usedImages" :key="index" class="image-item">
+                      <img :src="img" alt="used" class="preview-img" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </el-tab-pane>
-          </el-tabs>
-          <div class="storage-info">
-            <span class="text-sm text-on-surface-variant">存储：{{ storageUsed }}/200</span>
-          </div>
-        </div>
-      </el-tab-pane>
-
-      <!-- 数据看板 -->
-      <el-tab-pane label="数据看板" name="dashboard">
-        <div class="grid grid-cols-4 gap-6 mb-6">
-          <div class="glass-card p-6 text-center rounded-2xl">
-            <div class="headline-2 text-primary mb-2">{{ dashboardData.generation_count }}</div>
-            <div class="text-sm text-on-surface-variant">生成数</div>
-          </div>
-          <div class="glass-card p-6 text-center rounded-2xl">
-            <div class="headline-2 text-[#52c41a] mb-2">{{ dashboardData.daily_active }}</div>
-            <div class="text-sm text-on-surface-variant">日活数</div>
-          </div>
-          <div class="glass-card p-6 text-center rounded-2xl">
-            <div class="headline-2 text-[#1890ff] mb-2">{{ dashboardData.click_jump_count }}</div>
-            <div class="text-sm text-on-surface-variant">跳转数</div>
-          </div>
-          <div class="glass-card p-6 text-center rounded-2xl">
-            <div class="headline-2 text-[#722ed1] mb-2">{{ dashboardData.conversion_rate }}%</div>
-            <div class="text-sm text-on-surface-variant">转化率</div>
-          </div>
-        </div>
-        <div class="glass-card p-8 rounded-2xl">
-          <h3 class="font-headline font-bold text-lg text-white mb-6">趋势图</h3>
-          <div class="h-64 flex items-end gap-2">
-            <div v-for="(item, i) in dashboardData.daily_trend" :key="i" class="flex-1 flex flex-col items-center">
-              <div class="w-full bg-primary/20 rounded-t transition-all hover:bg-primary/40" :style="{ height: `${item.generation / maxGeneration * 100}%` }"></div>
-              <span class="text-xs text-on-surface-variant mt-3">{{ item.date }}</span>
+              </el-tab-pane>
+            </el-tabs>
+            <div class="storage-info">
+              <span class="text-sm text-on-surface-variant">存储：{{ storageUsed }}/200</span>
             </div>
-          </div>
-        </div>
-      </el-tab-pane>
+          </template>
 
-      <!-- 生成记录 -->
-      <el-tab-pane label="生成记录" name="records">
-        <div class="glass-card rounded-2xl overflow-hidden">
-          <el-table :data="generations" style="width: 100%" class="dark-table">
-            <el-table-column prop="created_at" label="时间" width="180" />
-            <el-table-column prop="type" label="类型" width="100">
-              <template #default="{ row }">
-                <el-tag class="tag-dark">{{ row.type === 'review' ? '评价' : '笔记' }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="content" label="生成内容" />
-            <el-table-column label="评分" width="120">
-              <template #default="{ row }">
-                <el-rate v-model="row.rating" disabled v-if="row.rating" class="rate-dark" />
-                <span v-else class="text-on-surface-variant text-sm">未评分</span>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-      </el-tab-pane>
+          <!-- 数据看板 -->
+          <template v-if="activeModule === 'dashboard'">
+            <div class="dashboard-fullscreen">
+              <DataDashboard :stats="dashboardData" />
+            </div>
+          </template>
 
-      <!-- 贴纸生成 -->
-      <el-tab-pane label="贴纸生成" name="sticker">
-        <div class="glass-card p-8 rounded-2xl">
-          <QrStickerGenerator
-            :merchant-id="route.params.id"
-            :merchant-name="merchantForm.name"
-            :merchant-logo="merchantForm.logo"
-          />
+          <!-- 资料管理 -->
+          <template v-if="activeModule === 'reference'">
+            <el-tabs class="reference-tabs">
+              <el-tab-pane label="图文笔记">
+                <div class="template-section">
+                  <div class="flex justify-end mb-4">
+                    <el-button class="btn-tertiary" @click="showNoteTemplateDialog = true">添加笔记模板</el-button>
+                  </div>
+                  <div v-if="noteTemplates.length === 0" class="empty-tip">
+                    暂无笔记模板
+                  </div>
+                  <div v-else class="template-list">
+                    <div v-for="(template, index) in noteTemplates" :key="index" class="template-item">
+                      <div class="template-content">{{ template.content }}</div>
+                      <div class="template-actions">
+                        <el-button size="small" text @click="deleteNoteTemplate(template.id)">删除</el-button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </el-tab-pane>
+              <el-tab-pane label="评价模板">
+                <div class="template-section">
+                  <div class="flex justify-end mb-4">
+                    <el-button class="btn-tertiary" @click="showReviewTemplateDialog = true">添加评价模板</el-button>
+                  </div>
+                  <div v-if="reviewTemplates.length === 0" class="empty-tip">
+                    暂无评价模板
+                  </div>
+                  <div v-else class="template-list">
+                    <div v-for="(template, index) in reviewTemplates" :key="index" class="template-item">
+                      <div class="template-content">{{ template.content }}</div>
+                      <div class="template-actions">
+                        <el-button size="small" text @click="deleteReviewTemplate(template.id)">删除</el-button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </el-tab-pane>
+            </el-tabs>
+
+            <!-- 笔记模板弹窗 -->
+            <el-dialog v-model="showNoteTemplateDialog" title="添加笔记模板" width="500px" class="dialog-dark">
+              <el-form :model="noteTemplateForm" label-width="80px">
+                <el-form-item label="内容">
+                  <el-input v-model="noteTemplateForm.content" type="textarea" :rows="4" placeholder="输入笔记模板内容" />
+                </el-form-item>
+              </el-form>
+              <template #footer>
+                <el-button @click="showNoteTemplateDialog = false">取消</el-button>
+                <el-button type="primary" class="btn-primary" @click="addNoteTemplate">确定</el-button>
+              </template>
+            </el-dialog>
+
+            <!-- 评价模板弹窗 -->
+            <el-dialog v-model="showReviewTemplateDialog" title="添加评价模板" width="500px" class="dialog-dark">
+              <el-form :model="reviewTemplateForm" label-width="80px">
+                <el-form-item label="内容">
+                  <el-input v-model="reviewTemplateForm.content" type="textarea" :rows="4" placeholder="输入评价模板内容" />
+                </el-form-item>
+              </el-form>
+              <template #footer>
+                <el-button @click="showReviewTemplateDialog = false">取消</el-button>
+                <el-button type="primary" class="btn-primary" @click="addReviewTemplate">确定</el-button>
+              </template>
+            </el-dialog>
+          </template>
+
+          <!-- 贴纸生成 -->
+          <template v-if="activeModule === 'generator'">
+            <QrStickerGenerator
+              :merchant-id="route.params.id"
+              :merchant-name="merchantForm.name"
+              :merchant-logo="merchantForm.logo"
+            />
+          </template>
         </div>
-      </el-tab-pane>
-    </el-tabs>
+      </div>
+    </div>
 
     <!-- 图片数量设置 -->
     <el-dialog v-model="showSettings" title="图片数量设置" width="400px" class="dialog-dark">
@@ -213,17 +245,33 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { merchant, warehouse } from '@/api'
+import { merchant, warehouse, reference } from '@/api'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Upload, Delete } from '@element-plus/icons-vue'
 import ImageUploader from '@/components/ImageUploader.vue'
 import QrStickerGenerator from '@/components/QrStickerGenerator.vue'
+import DataDashboard from './components/DataDashboard.vue'
+import MerchantInfo from './components/MerchantInfo.vue'
 
 const route = useRoute()
 const router = useRouter()
 const token = localStorage.getItem('token')
 
-const activeTab = ref('config')
+const activeModule = ref('dashboard')
+
+const merchantInfo = computed(() => ({
+  name: merchantForm.name,
+  logo: merchantForm.logo,
+  balance: merchantForm.reviewImageCount
+}))
+
+const handleModuleClick = (key) => {
+  activeModule.value = activeModule.value === key ? null : key
+  if (key === 'reference') {
+    fetchNoteTemplates()
+    fetchReviewTemplates()
+  }
+}
 const industries = [
   { code: 'catering', name: '餐饮' },
   { code: 'beauty', name: '美业' },
@@ -287,6 +335,12 @@ const dashboardData = reactive({
   daily_trend: []
 })
 const showSettings = ref(false)
+const noteTemplates = ref([])
+const reviewTemplates = ref([])
+const showNoteTemplateDialog = ref(false)
+const showReviewTemplateDialog = ref(false)
+const noteTemplateForm = reactive({ content: '' })
+const reviewTemplateForm = reactive({ content: '' })
 
 const maxGeneration = computed(() => {
   return Math.max(...dashboardData.daily_trend.map(t => t.generation), 1)
@@ -346,6 +400,78 @@ const fetchDashboard = async () => {
     Object.assign(dashboardData, res)
   } catch (e) {
     console.error(e)
+  }
+}
+
+const fetchNoteTemplates = async () => {
+  try {
+    const res = await reference.notes.list({ merchant_id: route.params.id })
+    noteTemplates.value = res.list || []
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+const addNoteTemplate = async () => {
+  try {
+    await reference.notes.create({
+      merchant_id: route.params.id,
+      content: noteTemplateForm.content
+    })
+    noteTemplateForm.content = ''
+    showNoteTemplateDialog.value = false
+    fetchNoteTemplates()
+    ElMessage.success('添加成功')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('添加失败')
+  }
+}
+
+const deleteNoteTemplate = async (id) => {
+  try {
+    await reference.notes.delete(id)
+    fetchNoteTemplates()
+    ElMessage.success('删除成功')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('删除失败')
+  }
+}
+
+const fetchReviewTemplates = async () => {
+  try {
+    const res = await reference.reviews.list({ merchant_id: route.params.id })
+    reviewTemplates.value = res.list || []
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+const addReviewTemplate = async () => {
+  try {
+    await reference.reviews.create({
+      merchant_id: route.params.id,
+      content: reviewTemplateForm.content
+    })
+    reviewTemplateForm.content = ''
+    showReviewTemplateDialog.value = false
+    fetchReviewTemplates()
+    ElMessage.success('添加成功')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('添加失败')
+  }
+}
+
+const deleteReviewTemplate = async (id) => {
+  try {
+    await reference.reviews.delete(id)
+    fetchReviewTemplates()
+    ElMessage.success('删除成功')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('删除失败')
   }
 }
 
@@ -428,6 +554,87 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.merchant-detail {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.main-content {
+  min-width: 0;
+}
+
+.side-content {
+  position: sticky;
+  top: 20px;
+}
+
+.module-edit-panel {
+  animation: slideIn 0.25s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.warehouse-tabs {
+  position: relative;
+}
+
+.reference-tabs {
+  margin-bottom: 16px;
+}
+
+.template-section {
+  padding: 16px 0;
+}
+
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.template-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.template-content {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.template-actions {
+  flex-shrink: 0;
+}
+
 .group-title :deep(.el-form-item__label) {
   font-size: 16px;
   font-weight: 600;

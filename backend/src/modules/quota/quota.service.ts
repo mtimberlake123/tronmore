@@ -145,6 +145,24 @@ export class QuotaService {
   }
 
   /**
+   * 获取租户余额
+   */
+  async getBalance(user: any) {
+    const tenant = await this.tenantRepository.findOne({
+      where: { tenantId: user.tenantId },
+    });
+    if (!tenant) {
+      throw new BadRequestException('账号不存在');
+    }
+
+    return {
+      balance: tenant.balance,
+      total_quota: tenant.totalQuota,
+      used_quota: tenant.usedQuota,
+    };
+  }
+
+  /**
    * 消费额度（生成内容时调用）
    */
   async consume(merchantId: string, amount: number = 1) {

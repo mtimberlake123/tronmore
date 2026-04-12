@@ -13,7 +13,7 @@
         <svg width="0.625rem" height="0.625rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M12 5v14M5 12h14"/>
         </svg>
-        New Prompt
+        新建提示词
       </button>
     </div>
 
@@ -26,19 +26,19 @@
       >
         <div class="prompt-top">
           <div class="prompt-tags">
-            <span class="tag industry">{{ p.industry || 'General' }}</span>
-            <span class="tag style">{{ p.style || 'Default' }}</span>
+            <span class="tag industry">{{ p.industry || '通用' }}</span>
+            <span class="tag style">{{ p.style || '默认' }}</span>
           </div>
           <span :class="['status-badge', p.is_active !== false ? 'active' : 'inactive']">
-            {{ p.is_active !== false ? 'ON' : 'OFF' }}
+            {{ p.is_active !== false ? '开启' : '关闭' }}
           </span>
         </div>
         <div class="prompt-text">{{ p.content }}</div>
         <div class="prompt-footer">
           <button class="btn btn-outline btn-xs" @click="toggleActive(p)">
-            {{ p.is_active !== false ? 'Disable' : 'Enable' }}
+            {{ p.is_active !== false ? '禁用' : '启用' }}
           </button>
-          <button class="btn btn-outline btn-xs" @click="openEdit(p)">Edit</button>
+          <button class="btn btn-outline btn-xs" @click="openEdit(p)">编辑</button>
         </div>
       </div>
 
@@ -47,7 +47,7 @@
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
           <polyline points="14 2 14 8 20 8"/>
         </svg>
-        <p>No prompts found</p>
+        <p>暂无提示词</p>
       </div>
     </div>
 
@@ -66,7 +66,7 @@
         <div class="dialog-header">
           <div class="section-header" style="margin-bottom:0">
             <div class="section-bar"></div>
-            <span class="section-title">{{ editTarget ? 'Edit Prompt' : 'New Prompt' }}</span>
+            <span class="section-title">{{ editTarget ? '编辑提示词' : '新建提示词' }}</span>
           </div>
           <button class="dialog-close" @click="showDialog = false">
             <svg width="0.75rem" height="0.75rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -77,26 +77,26 @@
         <div class="dialog-body">
           <div class="form-row">
             <div class="form-item">
-              <label>Industry</label>
+              <label>行业</label>
               <select v-model="form.industry" class="input input-select">
                 <option v-for="ind in industries.slice(1)" :key="ind.value" :value="ind.value">{{ ind.label }}</option>
               </select>
             </div>
             <div class="form-item">
-              <label>Style</label>
+              <label>风格</label>
               <select v-model="form.style" class="input input-select">
                 <option v-for="s in styles" :key="s.value" :value="s.value">{{ s.label }}</option>
               </select>
             </div>
           </div>
           <div class="form-item">
-            <label>Content</label>
-            <textarea v-model="form.content" class="input textarea" rows="6" placeholder="Enter prompt content..."></textarea>
+            <label>内容</label>
+            <textarea v-model="form.content" class="input textarea" rows="6" placeholder="输入提示词内容..."></textarea>
           </div>
         </div>
         <div class="dialog-footer">
-          <button class="btn btn-outline" @click="showDialog = false">Cancel</button>
-          <button class="btn btn-primary" :loading="saveLoading" @click="handleSave">{{ editTarget ? 'Save' : 'Create' }}</button>
+          <button class="btn btn-outline" @click="showDialog = false">取消</button>
+          <button class="btn btn-primary" :loading="saveLoading" @click="handleSave">{{ editTarget ? '保存' : '创建' }}</button>
         </div>
       </div>
     </div>
@@ -116,19 +116,19 @@ const total = ref(0)
 const activeIndustry = ref('all')
 
 const industries = [
-  { label: 'All', value: 'all' },
-  { label: 'Catering', value: 'catering' },
-  { label: 'Retail', value: 'retail' },
-  { label: 'Beauty', value: 'beauty' },
-  { label: 'Education', value: 'education' },
-  { label: 'General', value: 'general' }
+  { label: '全部', value: 'all' },
+  { label: '餐饮', value: 'catering' },
+  { label: '零售', value: 'retail' },
+  { label: '美容', value: 'beauty' },
+  { label: '教育', value: 'education' },
+  { label: '通用', value: 'general' }
 ]
 
 const styles = [
-  { label: 'Formal', value: 'formal' },
-  { label: 'Playful', value: 'playful' },
-  { label: 'Minimal', value: 'minimal' },
-  { label: 'Premium', value: 'premium' }
+  { label: '正式', value: 'formal' },
+  { label: '活泼', value: 'playful' },
+  { label: '简约', value: 'minimal' },
+  { label: '高端', value: 'premium' }
 ]
 
 const showDialog = ref(false)
@@ -156,10 +156,10 @@ const handleSave = async () => {
   try {
     if (editTarget.value) {
       await admin.prompts.update(editTarget.value.id, form.value)
-      ElMessage.success('Saved')
+      ElMessage.success('保存成功')
     } else {
       await admin.prompts.create(form.value)
-      ElMessage.success('Created')
+      ElMessage.success('创建成功')
     }
     showDialog.value = false
     editTarget.value = null
@@ -177,7 +177,7 @@ const openEdit = (p) => {
 const toggleActive = async (p) => {
   try {
     await admin.prompts.update(p.id, { is_active: p.is_active === false ? true : false })
-    ElMessage.success('Updated')
+    ElMessage.success('更新成功')
     fetchPrompts()
   } catch (e) { console.error(e) }
 }

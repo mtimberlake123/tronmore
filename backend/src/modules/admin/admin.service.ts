@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { Tenant } from '../auth/tenant.entity';
+import { Merchant } from '../merchant/merchant.entity';
 import { PromptTemplate } from './prompt-template.entity';
 import { SensitiveWord } from './sensitive-word.entity';
 
@@ -11,6 +12,8 @@ export class AdminService {
   constructor(
     @InjectRepository(Tenant)
     private tenantRepository: Repository<Tenant>,
+    @InjectRepository(Merchant)
+    private merchantRepository: Repository<Merchant>,
     @InjectRepository(PromptTemplate)
     private promptRepository: Repository<PromptTemplate>,
     @InjectRepository(SensitiveWord)
@@ -41,6 +44,23 @@ export class AdminService {
 
     const [list, total] = await query.getManyAndCount();
 
+    // Query merchant counts per tenant
+    const tenantIds = list.map(t => t.tenantId);
+    let countMap: Record<string, number> = {};
+    if (tenantIds.length > 0) {
+      const merchantCounts = await this.merchantRepository
+        .createQueryBuilder('m')
+        .select('m.tenantId', 'tenantId')
+        .addSelect('COUNT(*)', 'count')
+        .where('m.tenantId IN (:...tenantIds)', { tenantIds })
+        .groupBy('m.tenantId')
+        .getRawMany();
+
+      merchantCounts.forEach(mc => {
+        countMap[mc.tenantId] = parseInt(mc.count);
+      });
+    }
+
     return {
       list: list.map(t => ({
         company_id: t.tenantId,
@@ -51,6 +71,7 @@ export class AdminService {
         used_quota: t.usedQuota,
         status: t.status,
         created_at: t.createdAt,
+        merchants: countMap[t.tenantId] || 0,
       })),
       total,
     };
@@ -222,6 +243,13 @@ export class AdminService {
   }
 
   /**
+   * 获取启用的风险规则
+   */
+  async getActiveRules(): Promise<SensitiveWord[]> {
+    return this.sensitiveRepository.find({ where: { active: true } });
+  }
+
+  /**
    * 获取敏感词列表
    */
   async getSensitiveWords(params: {
@@ -256,6 +284,9 @@ export class AdminService {
         word: s.word,
         category: s.category,
         level: s.level,
+        rule: s.rule || '',
+        active: s.active !== false,
+        paramName: s.paramName || '',
         created_at: s.createdAt,
       })),
       total,
@@ -263,12 +294,15 @@ export class AdminService {
   }
 
   /**
-   * 添加敏感词
+   * 添加敏感词/风险规则
    */
   async createSensitiveWord(data: {
     word: string;
     category: string;
     level?: number;
+    rule?: string;
+    active?: boolean;
+    paramName?: string;
   }) {
     // 检查是否已存在
     const exists = await this.sensitiveRepository.findOne({ where: { word: data.word } });
@@ -280,6 +314,9 @@ export class AdminService {
       word: data.word,
       category: data.category,
       level: data.level || 1,
+      rule: data.rule || '',
+      active: data.active !== false,
+      paramName: data.paramName || '',
     });
     await this.sensitiveRepository.save(word);
 
@@ -288,6 +325,9 @@ export class AdminService {
       word: word.word,
       category: word.category,
       level: word.level,
+      rule: word.rule || '',
+      active: word.active,
+      paramName: word.paramName || '',
     };
   }
 
@@ -302,6 +342,42 @@ export class AdminService {
 
     await this.sensitiveRepository.remove(word);
     return { message: '删除成功' };
+  }
+
+  /**
+   * 更新敏感词/风险规则
+   */
+  async updateSensitiveWord(id: number, data: {
+    word?: string;
+    category?: string;
+    level?: number;
+    rule?: string;
+    active?: boolean;
+    paramName?: string;
+  }) {
+    const word = await this.sensitiveRepository.findOne({ where: { id } });
+    if (!word) {
+      throw new NotFoundException('规则不存在');
+    }
+
+    if (data.word !== undefined) word.word = data.word;
+    if (data.category !== undefined) word.category = data.category;
+    if (data.level !== undefined) word.level = data.level;
+    if (data.rule !== undefined) word.rule = data.rule;
+    if (data.active !== undefined) word.active = data.active;
+    if (data.paramName !== undefined) word.paramName = data.paramName;
+
+    await this.sensitiveRepository.save(word);
+
+    return {
+      id: word.id,
+      word: word.word,
+      category: word.category,
+      level: word.level,
+      rule: word.rule || '',
+      active: word.active,
+      paramName: word.paramName || '',
+    };
   }
 
   /**
@@ -320,6 +396,92 @@ export class AdminService {
       company_id: companyId,
       username: data.username,
       role: data.role,
+    };
+  }
+
+  /**
+   * 获取商家列表
+   */
+  async getMerchants(params: {
+    tenantId?: string;
+    page?: number;
+    page_size?: number;
+  }) {
+    const { tenantId, page = 1, page_size = 20 } = params;
+    const pageNum = typeof page === 'string' ? parseInt(page) : page;
+    const pageSizeNum = typeof page_size === 'string' ? parseInt(page_size) : page_size;
+    const safePageSize = Math.min(pageSizeNum || 20, 100);
+
+    const query = this.merchantRepository.createQueryBuilder('m');
+
+    if (tenantId) {
+      query.where('m.tenantId = :tenantId', { tenantId });
+    }
+
+    query.orderBy('m.createdAt', 'DESC');
+    query.skip((pageNum - 1) * safePageSize).take(safePageSize);
+
+    const [list, total] = await query.getManyAndCount();
+
+    // 获取公司名称
+    const tenantIds = [...new Set(list.map(m => m.tenantId))];
+    let tenantMap: Record<string, string> = {};
+    if (tenantIds.length > 0) {
+      const tenants = await this.tenantRepository
+        .createQueryBuilder('t')
+        .select(['t.tenantId', 't.name'])
+        .where('t.tenantId IN (:...ids)', { ids: tenantIds })
+        .getRawMany();
+      tenants.forEach(t => { tenantMap[t.tenantId] = t.name; });
+    }
+
+    return {
+      list: list.map(m => ({
+        id: m.merchantId,
+        name: m.name,
+        tenantId: m.tenantId,
+        companyName: tenantMap[m.tenantId] || '',
+        balance: m.balance,
+        created_at: m.createdAt,
+      })),
+      total,
+    };
+  }
+
+  /**
+   * 删除商家
+   */
+  async deleteMerchant(merchantId: string) {
+    const merchant = await this.merchantRepository.findOne({ where: { merchantId } });
+    if (!merchant) {
+      throw new NotFoundException('商家不存在');
+    }
+    await this.merchantRepository.remove(merchant);
+    return { message: '删除成功' };
+  }
+
+  /**
+   * 迁移商家
+   */
+  async transferMerchant(merchantId: string, targetTenantId: string) {
+    const merchant = await this.merchantRepository.findOne({ where: { merchantId } });
+    if (!merchant) {
+      throw new NotFoundException('商家不存在');
+    }
+
+    const targetTenant = await this.tenantRepository.findOne({ where: { tenantId: targetTenantId } });
+    if (!targetTenant) {
+      throw new NotFoundException('目标公司不存在');
+    }
+
+    merchant.tenantId = targetTenantId;
+    await this.merchantRepository.save(merchant);
+
+    return {
+      message: '迁移成功',
+      merchant_id: merchantId,
+      from_tenant: merchant.tenantId,
+      to_tenant: targetTenantId,
     };
   }
 }

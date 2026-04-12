@@ -75,10 +75,40 @@ let AdminController = class AdminController {
             ...(await this.adminService.deleteSensitiveWord(parseInt(id))),
         };
     }
+    async updateSensitiveWord(id, body) {
+        return {
+            code: 200,
+            data: await this.adminService.updateSensitiveWord(parseInt(id), body),
+        };
+    }
+    async getActiveRules() {
+        return {
+            code: 200,
+            data: await this.adminService.getActiveRules(),
+        };
+    }
     async createSubAccount(id, body) {
         return {
             code: 200,
             data: await this.adminService.createSubAccount(id, body),
+        };
+    }
+    async getMerchants(query) {
+        return {
+            code: 200,
+            data: await this.adminService.getMerchants(query),
+        };
+    }
+    async deleteMerchant(id) {
+        return {
+            code: 200,
+            ...(await this.adminService.deleteMerchant(id)),
+        };
+    }
+    async transferMerchant(id, body) {
+        return {
+            code: 200,
+            ...(await this.adminService.transferMerchant(id, body.targetTenantId)),
         };
     }
 };
@@ -149,6 +179,20 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "deleteSensitiveWord", null);
 __decorate([
+    (0, common_1.Put)('sensitive-words/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updateSensitiveWord", null);
+__decorate([
+    (0, common_1.Get)('rules/active'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getActiveRules", null);
+__decorate([
     (0, common_1.Post)('companies/:id/sub-accounts'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
@@ -156,6 +200,28 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "createSubAccount", null);
+__decorate([
+    (0, common_1.Get)('merchants'),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getMerchants", null);
+__decorate([
+    (0, common_1.Delete)('merchants/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "deleteMerchant", null);
+__decorate([
+    (0, common_1.Post)('merchants/:id/transfer'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "transferMerchant", null);
 exports.AdminController = AdminController = __decorate([
     (0, common_1.Controller)('admin'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, admin_guard_1.AdminGuard),
