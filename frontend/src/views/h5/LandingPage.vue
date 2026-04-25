@@ -1,158 +1,116 @@
 <template>
-  <div class="h5-landing" :class="{ 'dark-mode': isDark }">
-    <!-- 动态背景 -->
-    <div class="bg-effects">
-      <div class="orb orb-1"></div>
-      <div class="orb orb-2"></div>
-      <div class="orb orb-3"></div>
-    </div>
-
-    <!-- 加载状态 -->
+  <div class="h5-landing">
     <div v-if="loading" class="loading-screen">
-      <div class="loader">
-        <div class="loader-orb"></div>
-        <div class="loader-orb delay-1"></div>
-        <div class="loader-orb delay-2"></div>
-      </div>
-      <p class="loading-text">正在加载...</p>
+      <div class="loader"></div>
+      <p>正在加载商家信息...</p>
     </div>
 
-    <!-- 主内容 -->
-    <div v-else class="content-wrapper">
-      <!-- 顶部商家信息 -->
-      <div class="merchant-header">
-        <div class="merchant-logo">
-          <img v-if="config.logo" :src="config.logo" :alt="config.name" />
-          <div v-else class="logo-placeholder">
-            <Shop />
-          </div>
-        </div>
-        <h1 class="merchant-name">{{ config.name }}</h1>
-        <div v-if="config.incentive" class="incentive-badge">
-          <span class="icon">🎁</span>
-          <span>{{ config.incentive }}</span>
-        </div>
-      </div>
-
-      <!-- 主操作区 -->
-      <div class="main-action">
-        <!-- 激励卡片 -->
-        <div class="motivation-card">
-          <div class="motivation-icon">🎁</div>
-          <p class="motivation-text">{{ config.incentive || '参与活动，发布好评即享优惠！' }}</p>
-        </div>
-
-        <!-- 生成按钮 -->
-        <button
-          v-if="!result"
-          class="generate-btn"
-          :class="{ loading: generating }"
-          :disabled="generating || !canGenerate"
-          @click="handleGenerate"
-        >
-          <span v-if="!generating" class="btn-content">
-            <MagicStick class="btn-icon" />
-            <span class="btn-text">生成内容</span>
-          </span>
-          <span v-else class="btn-loading">
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
-          </span>
-        </button>
-
-        <!-- 余额不足提示 -->
-        <div v-if="!canGenerate" class="balance-tip">
-          该商家额度已用完，请联系商家充值
-        </div>
-      </div>
-
-      <!-- 生成结果 -->
-      <div v-if="result" class="result-section">
-        <!-- 图片展示 -->
-        <div class="images-wall">
-          <h3 class="section-title">
-            <Picture class="title-icon" />
-            配套图片
-          </h3>
-          <div class="images-grid">
-            <div
-              v-for="(img, idx) in result.images"
-              :key="idx"
-              class="image-item"
-              :style="{ animationDelay: `${idx * 0.1}s` }"
-            >
-              <img :src="img.url" alt="" />
-              <div class="image-overlay">
-                <el-button size="small" @click="previewImage(img.url)">预览</el-button>
-              </div>
-            </div>
+    <template v-else>
+      <section class="hero" :style="heroStyle">
+        <div class="hero-mask"></div>
+        <div class="mini-nav">
+          <button class="nav-icon" type="button" @click="goBack">
+            <ArrowLeft />
+          </button>
+          <button class="nav-icon" type="button">
+            <House />
+          </button>
+          <div class="nav-spacer"></div>
+          <button class="nav-icon soft" type="button">
+            <Star />
+          </button>
+          <div class="capsule">
+            <MoreFilled />
+            <span class="capsule-dot"></span>
           </div>
         </div>
 
-        <!-- 文案展示 -->
-        <div class="content-card">
-          <div class="content-header">
-            <span class="content-type">{{ contentTypeLabel }}</span>
-            <el-button text @click="regenerate" :loading="generating">
-              <Refresh class="btn-icon-sm" /> 换一换
-            </el-button>
-          </div>
-          <div class="content-text" @click="copyText">
-            <p v-for="(line, idx) in result.text.split('\n')" :key="idx">{{ line }}</p>
-          </div>
-          <div class="content-actions">
-            <el-button @click="copyText" type="primary" size="large">
-              <DocumentCopy class="btn-icon-sm" />
-              复制文案
-            </el-button>
-            <el-button @click="showJumpDialog = true" type="warning" size="large">
-              <Promotion class="btn-icon-sm" />
-              去发布
-            </el-button>
-          </div>
+        <div class="hero-content">
+          <h1>{{ config.name || '商家名称' }}</h1>
+          <p>
+            <LocationFilled />
+            <span>{{ config.address || '到店体验后，一键生成优质分享内容' }}</span>
+          </p>
         </div>
-      </div>
+      </section>
 
-      <!-- 底部跳转平台 -->
-      <div v-if="result" class="jump-section">
-        <p class="jump-hint">跳转到以下平台发布</p>
-        <div class="platform-list">
+      <main class="action-panel">
+        <div class="action-grid">
           <button
-            v-for="platform in config.jump_targets"
-            :key="platform"
-            class="platform-btn"
-            @click="jumpToPlatform(platform)"
+            v-for="item in actionCards"
+            :key="item.key"
+            class="action-card"
+            type="button"
+            :disabled="generating && item.generating"
+            @click="handleAction(item)"
           >
-            <span class="platform-icon">{{ getPlatformIcon(platform) }}</span>
-            <span class="platform-name">{{ getPlatformName(platform) }}</span>
+            <span :class="['app-mark', item.tone]">{{ item.mark }}</span>
+            <strong>{{ item.title }}</strong>
+            <small>{{ item.desc }}</small>
           </button>
         </div>
-      </div>
-    </div>
 
-    <!-- 跳转确认弹窗 -->
-    <el-dialog v-model="showJumpDialog" title="确认跳转" width="90%" class="jump-dialog">
-      <div class="dialog-content">
-        <p class="dialog-text">即将跳转至：<strong>{{ jumpPlatformName }}</strong></p>
-        <div class="dialog-tips">
-          <p>📋 文案已自动复制到剪贴板</p>
-          <p>📸 图片已准备好，发布时选择上传</p>
-          <p>✨ 发布成功后可返回领取奖励</p>
+        <div v-if="config.incentive" class="gift-strip">
+          <span>商家福利</span>
+          <p>{{ config.incentive }}</p>
         </div>
-      </div>
-      <template #footer>
-        <el-button @click="showJumpDialog = false">取消</el-button>
-        <el-button type="primary" @click="confirmJump">确认跳转</el-button>
-      </template>
-    </el-dialog>
 
-    <!-- Toast提示 -->
-    <Transition name="toast">
-      <div v-if="toast.show" class="toast" :class="toast.type">
-        {{ toast.message }}
-      </div>
-    </Transition>
+        <section v-if="result" class="result-card">
+          <div class="result-header">
+            <div>
+              <span class="section-kicker">{{ contentTypeLabel }}</span>
+              <h2>内容已生成</h2>
+            </div>
+            <button class="text-btn" type="button" @click="regenerate" :disabled="generating">
+              换一换
+            </button>
+          </div>
+
+          <div class="content-text" @click="copyText">
+            <p v-for="(line, index) in result.text.split('\n')" :key="index">{{ line }}</p>
+          </div>
+
+          <div v-if="result.images?.length" class="images-grid">
+            <button
+              v-for="(img, index) in result.images"
+              :key="index"
+              class="image-item"
+              type="button"
+              @click="previewImage(img.url)"
+            >
+              <img :src="img.url" alt="" />
+            </button>
+          </div>
+
+          <div class="result-actions">
+            <button class="primary-action" type="button" @click="copyText">复制文案</button>
+            <button class="secondary-action" type="button" @click="showJumpDialog = true">去发布</button>
+          </div>
+        </section>
+
+      </main>
+
+      <el-dialog v-model="showJumpDialog" title="确认跳转" width="90%" class="jump-dialog">
+        <div class="dialog-content">
+          <p class="dialog-text">即将跳转至：<strong>{{ jumpPlatformName }}</strong></p>
+          <div class="dialog-tips">
+            <p>文案会先复制到剪贴板。</p>
+            <p>发布时可选择生成结果中的配图。</p>
+            <p>发布完成后可回到商家页面领取福利。</p>
+          </div>
+        </div>
+        <template #footer>
+          <el-button @click="showJumpDialog = false">取消</el-button>
+          <el-button type="primary" @click="confirmJump">确认跳转</el-button>
+        </template>
+      </el-dialog>
+
+      <Transition name="toast">
+        <div v-if="toast.show" class="toast" :class="toast.type">
+          {{ toast.message }}
+        </div>
+      </Transition>
+    </template>
   </div>
 </template>
 
@@ -160,49 +118,102 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { h5 } from '@/api'
-import { ElMessage } from 'element-plus'
-import { Shop, MagicStick, Picture, Refresh, DocumentCopy, Promotion } from '@element-plus/icons-vue'
+import {
+  ArrowLeft,
+  House,
+  LocationFilled,
+  MoreFilled,
+  Star
+} from '@element-plus/icons-vue'
 
 const route = useRoute()
 
-// 状态
 const loading = ref(true)
 const generating = ref(false)
+const lastGenerateType = ref('review')
 const config = reactive({
   merchant_id: '',
   name: '',
   logo: '',
+  cover_image: '',
   incentive: '',
   jump_targets: ['dianping'],
   dy_url: '',
   wx_qr: '',
+  address: '',
 })
 const result = ref(null)
 const showJumpDialog = ref(false)
-const selectedPlatform = ref('')
+const selectedPlatform = ref('dianping')
 const toast = reactive({ show: false, message: '', type: 'success' })
 
-// 计算属性
-const canGenerate = computed(() => true) // 前端不做校验，由后端返回
-const contentTypeLabel = computed(() => {
-  // 根据实际type显示
-  return '评价内容'
+const heroStyle = computed(() => {
+  const backgroundImage = config.cover_image || config.logo
+  if (backgroundImage) {
+    return { backgroundImage: `url("${backgroundImage}")` }
+  }
+
+  return {
+    backgroundImage:
+      'linear-gradient(135deg, #d7c0a0 0%, #9d7550 48%, #4d3728 100%)'
+  }
 })
 
-// 初始化
+const actionCards = computed(() => [
+  {
+    key: 'xhs-note',
+    mark: '小红书',
+    title: '小红书发笔记',
+    desc: generating.value && lastGenerateType.value === 'note' ? '正在生成内容' : 'AI帮你速写，随意改',
+    tone: 'red',
+    type: 'note',
+    generating: true,
+  },
+  {
+    key: 'dianping-review',
+    mark: '点评',
+    title: '大众发点评',
+    desc: generating.value && lastGenerateType.value === 'review' ? '正在生成内容' : 'AI帮你速写笔记',
+    tone: 'orange',
+    type: 'review',
+    generating: true,
+  },
+  {
+    key: 'douyin-follow',
+    mark: '抖音',
+    title: '关注商家抖音',
+    desc: '关注抖音赠好礼',
+    tone: 'black',
+    platform: 'douyin',
+  },
+  {
+    key: 'wechat-add',
+    mark: '微信',
+    title: '添加商家微信',
+    desc: '添加微信领取好礼',
+    tone: 'orange',
+    platform: 'wechat',
+  },
+])
+
+const contentTypeLabel = computed(() => (
+  lastGenerateType.value === 'note' ? '小红书笔记' : '点评内容'
+))
+
+const jumpPlatformName = computed(() => getPlatformName(selectedPlatform.value))
+
 onMounted(async () => {
-  const merchantId = route.query.merchant_id || route.params.merchant_id
+  const merchantId = route.params.merchantId || route.params.merchant_id || route.query.merchant_id
   if (!merchantId) {
     showToast('缺少商家参数', 'error')
+    loading.value = false
     return
   }
 
   try {
-    // 获取商家配置
     const data = await h5.config(merchantId)
     Object.assign(config, data)
 
-    // 记录埋点 - page_view
     await h5.track({
       event: 'page_view',
       merchant_id: merchantId,
@@ -217,38 +228,65 @@ onMounted(async () => {
   }
 })
 
-// 生成内容
-const handleGenerate = async () => {
+const handleAction = async (item) => {
+  if (item.type) {
+    await generateContent(item.type)
+    return
+  }
+
+  if (item.platform === 'douyin') {
+    await trackJump('douyin')
+    if (config.dy_url) {
+      window.location.href = config.dy_url
+    } else {
+      showToast('商家暂未配置抖音主页', 'warning')
+    }
+    return
+  }
+
+  if (item.platform === 'wechat') {
+    await trackJump('wechat')
+    if (config.wx_qr) {
+      previewImage(config.wx_qr)
+    } else {
+      showToast('商家暂未配置微信', 'warning')
+    }
+    return
+  }
+
+  jumpToPlatform(item.platform)
+}
+
+const generateContent = async (type = 'review') => {
   if (generating.value) return
 
   generating.value = true
+  lastGenerateType.value = type
 
   try {
-    // 记录埋点 - btn_generate
     await h5.track({
       event: 'btn_generate',
       merchant_id: config.merchant_id,
       qr_id: route.query.qr_id,
-      type: 'review',
+      type,
     })
 
-    // 调用生成接口
     const data = await h5.generate({
       merchant_id: config.merchant_id,
-      type: 'review',
+      type,
     })
 
     result.value = data.content
 
-    // 记录埋点 - gen_success
     await h5.track({
       event: 'gen_success',
       merchant_id: config.merchant_id,
       trace_id: data.trace_id,
       duration: 0,
+      type,
     })
 
-    showToast('生成成功！', 'success')
+    showToast('生成成功，点击文案可复制')
   } catch (error) {
     console.error('生成失败:', error)
     if (error.message?.includes('4001')) {
@@ -263,13 +301,13 @@ const handleGenerate = async () => {
   }
 }
 
-// 重新生成
 const regenerate = async () => {
-  await handleGenerate()
+  await generateContent(lastGenerateType.value)
 }
 
-// 复制文案
 const copyText = async () => {
+  if (!result.value?.text) return
+
   try {
     await navigator.clipboard.writeText(result.value.text)
     showToast('文案已复制到剪贴板')
@@ -278,70 +316,57 @@ const copyText = async () => {
   }
 }
 
-// 预览图片
 const previewImage = (url) => {
   window.open(url, '_blank')
 }
 
-// 选择跳转平台
 const jumpToPlatform = (platform) => {
-  selectedPlatform.value = platform
+  selectedPlatform.value = platform || 'dianping'
   showJumpDialog.value = true
 }
 
-// 确认跳转
 const confirmJump = async () => {
   showJumpDialog.value = false
-
-  // 复制文案
   await copyText()
+  await trackJump(selectedPlatform.value)
 
-  // 记录埋点 - click_jump
-  await h5.track({
-    event: 'click_jump',
-    merchant_id: config.merchant_id,
-    target_platform: selectedPlatform.value,
-  })
-
-  // 构建跳转URL
-  let scheme = ''
   const name = encodeURIComponent(config.name)
-
-  switch (selectedPlatform.value) {
-    case 'dianping':
-      scheme = `dianping://search?keyword=${name}`
-      break
-    case 'xhs':
-      scheme = `xhsdiscover://search/result?keyword=${name}`
-      break
-    case 'meituan':
-      scheme = `meituan://www.meituan.com/search?keyword=${name}`
-      break
+  const schemes = {
+    dianping: `dianping://search?keyword=${name}`,
+    xhs: `xhsdiscover://search/result?keyword=${name}`,
+    meituan: `meituan://www.meituan.com/search?keyword=${name}`,
   }
 
-  // 尝试唤起App
-  window.location.href = scheme
-
-  // 兜底处理
+  window.location.href = schemes[selectedPlatform.value] || schemes.dianping
   setTimeout(() => {
-    showToast('正在为您打开App...')
+    showToast('正在为您打开应用...')
   }, 500)
 }
 
-// 获取平台信息
-const getPlatformIcon = (platform) => {
-  const icons = { dianping: '📍', xhs: '📕', meituan: '🍔' }
-  return icons[platform] || '📱'
+const trackJump = async (platform) => {
+  await h5.track({
+    event: 'click_jump',
+    merchant_id: config.merchant_id,
+    target_platform: platform,
+  })
 }
 
 const getPlatformName = (platform) => {
-  const names = { dianping: '大众点评', xhs: '小红书', meituan: '美团' }
+  const names = {
+    dianping: '大众点评',
+    xhs: '小红书',
+    meituan: '美团',
+    douyin: '抖音',
+  }
   return names[platform] || platform
 }
 
-const jumpPlatformName = computed(() => getPlatformName(selectedPlatform.value))
+const goBack = () => {
+  if (window.history.length > 1) {
+    window.history.back()
+  }
+}
 
-// Toast提示
 const showToast = (message, type = 'success') => {
   toast.message = message
   toast.type = type
@@ -353,331 +378,308 @@ const showToast = (message, type = 'success') => {
 </script>
 
 <style scoped>
-/* 基础变量 */
 .h5-landing {
-  --primary: #667eea;
-  --primary-dark: #764ba2;
-  --bg-glass: rgba(255, 255, 255, 0.85);
-  --text-primary: #1f2937;
-  --text-secondary: #6b7280;
-
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  position: relative;
+  background: #fff;
+  color: #111;
   overflow-x: hidden;
 }
 
-/* 背景动效 */
-.bg-effects {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.4;
-}
-
-.orb-1 {
-  width: 300px;
-  height: 300px;
-  background: #fff;
-  top: -100px;
-  right: -50px;
-  animation: float1 8s ease-in-out infinite;
-}
-
-.orb-2 {
-  width: 200px;
-  height: 200px;
-  background: #ffd700;
-  bottom: 20%;
-  left: -80px;
-  animation: float2 10s ease-in-out infinite;
-}
-
-.orb-3 {
-  width: 150px;
-  height: 150px;
-  background: #ff6b6b;
-  top: 40%;
-  right: -40px;
-  animation: float3 12s ease-in-out infinite;
-}
-
-@keyframes float1 {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(-20px, 20px); }
-}
-
-@keyframes float2 {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(30px, -20px); }
-}
-
-@keyframes float3 {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(-15px, -30px); }
-}
-
-/* 加载状态 */
 .loading-screen {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 24px;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  background: #f7f7f7;
+  color: #666;
 }
 
 .loader {
-  display: flex;
-  gap: 8px;
-}
-
-.loader-orb {
-  width: 16px;
-  height: 16px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: white;
-  animation: pulse 1.4s ease-in-out infinite;
+  border: 3px solid #ddd;
+  border-top-color: #111;
+  animation: spin 0.8s linear infinite;
 }
 
-.loader-orb.delay-1 { animation-delay: 0.2s; }
-.loader-orb.delay-2 { animation-delay: 0.4s; }
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.5); opacity: 0.5; }
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.loading-text {
-  color: white;
-  font-size: 16px;
-  font-weight: 500;
+.hero {
+  position: relative;
+  min-height: 42vh;
+  padding: 18px 18px 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-size: cover;
+  background-position: center;
 }
 
-/* 内容包装 */
-.content-wrapper {
+.hero-mask {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.58)),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.34), transparent 70%);
+}
+
+.mini-nav,
+.hero-content {
   position: relative;
   z-index: 1;
-  padding: 24px 16px;
-  max-width: 480px;
-  margin: 0 auto;
 }
 
-/* 商家头部 */
-.merchant-header {
-  text-align: center;
-  margin-bottom: 32px;
-}
-
-.merchant-logo {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 16px;
-  border-radius: 20px;
-  overflow: hidden;
-  background: white;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-}
-
-.merchant-logo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.logo-placeholder {
-  width: 100%;
-  height: 100%;
+.mini-nav {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #667eea;
+  gap: 14px;
+  color: rgba(255, 255, 255, 0.92);
 }
 
-.merchant-name {
-  font-size: 24px;
-  font-weight: 700;
-  color: white;
-  margin-bottom: 12px;
+.nav-spacer {
+  flex: 1;
 }
 
-.incentive-badge {
+.nav-icon,
+.capsule {
+  height: 46px;
+  min-width: 46px;
+  border: none;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.92);
+  background: transparent;
+}
+
+.nav-icon :deep(svg),
+.capsule :deep(svg) {
+  width: 26px;
+  height: 26px;
+}
+
+.nav-icon.soft,
+.capsule {
+  background: rgba(255, 255, 255, 0.34);
+  backdrop-filter: blur(12px);
+}
+
+.capsule {
+  gap: 18px;
+  min-width: 116px;
+  padding: 0 18px;
+}
+
+.capsule-dot {
+  width: 24px;
+  height: 24px;
+  border: 4px solid currentColor;
+  border-radius: 50%;
+}
+
+.hero-content {
+  color: #fff;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.35);
+}
+
+.hero-content h1 {
+  margin: 0 0 12px;
+  font-size: clamp(30px, 8vw, 44px);
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.hero-content p {
+  margin: 0;
+  display: flex;
+  align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.95);
-  color: #667eea;
-  padding: 8px 20px;
-  border-radius: 24px;
-  font-size: 14px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 17px;
   font-weight: 600;
 }
 
-.incentive-badge .icon {
-  font-size: 16px;
+.hero-content :deep(svg) {
+  width: 24px;
+  height: 24px;
 }
 
-/* 主操作区 */
-.main-action {
-  margin-bottom: 24px;
+.action-panel {
+  position: relative;
+  z-index: 2;
+  margin-top: -24px;
+  min-height: 58vh;
+  padding: 34px 28px 28px;
+  background: #fff;
+  border-radius: 36px 36px 0 0;
 }
 
-.motivation-card {
-  background: var(--bg-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 20px;
-  padding: 24px;
-  text-align: center;
-  margin-bottom: 20px;
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 20px;
 }
 
-.motivation-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
+.action-card {
+  min-height: 178px;
+  padding: 28px 24px 22px;
+  border: none;
+  border-radius: 24px;
+  background: #f6f6f6;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
-.motivation-text {
-  font-size: 16px;
-  color: var(--text-primary);
+.action-card:active {
+  transform: scale(0.98);
+}
+
+.action-card:disabled {
+  opacity: 0.72;
+}
+
+.app-mark {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.08em;
+}
+
+.app-mark.red {
+  background: #ff2442;
+}
+
+.app-mark.orange {
+  background: #ff6a2a;
+}
+
+.app-mark.black {
+  background: #050505;
+}
+
+.action-card strong {
+  margin-top: auto;
+  color: #111;
+  font-size: clamp(20px, 5.4vw, 28px);
+  line-height: 1.12;
+  font-weight: 800;
+}
+
+.action-card small {
+  color: #999;
+  font-size: clamp(14px, 4vw, 19px);
+  line-height: 1.2;
+}
+
+.gift-strip {
+  margin-top: 22px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+}
+
+.gift-strip span {
+  display: block;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.gift-strip p {
+  margin: 0;
+  color: #7c2d12;
   line-height: 1.6;
 }
 
-/* 生成按钮 */
-.generate-btn {
-  width: 100%;
-  height: 56px;
-  border: none;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
-  color: #1f2937;
-  font-size: 18px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 24px rgba(255, 215, 0, 0.4);
-}
-
-.generate-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(255, 215, 0, 0.5);
-}
-
-.generate-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.generate-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.generate-btn.loading {
-  background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
-}
-
-.btn-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.btn-icon {
-  font-size: 20px;
-}
-
-.btn-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.btn-loading .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #1f2937;
-  animation: dotPulse 1.4s ease-in-out infinite;
-}
-
-.btn-loading .dot:nth-child(2) { animation-delay: 0.2s; }
-.btn-loading .dot:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes dotPulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.5); opacity: 0.5; }
-}
-
-.balance-tip {
-  text-align: center;
-  color: #fef3c7;
-  font-size: 13px;
-  margin-top: 12px;
-}
-
-/* 结果区域 */
-.result-section {
-  animation: fadeInUp 0.5s ease;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 图片墙 */
-.images-wall {
-  background: var(--bg-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 20px;
+.result-card {
+  margin-top: 24px;
   padding: 20px;
-  margin-bottom: 16px;
+  border-radius: 24px;
+  background: #f7f7f7;
+  animation: riseIn 0.28s ease-out both;
 }
 
-.section-title {
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.result-header {
   display: flex;
+  justify-content: space-between;
+  gap: 14px;
   align-items: center;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
   margin-bottom: 16px;
 }
 
-.title-icon {
-  color: #667eea;
+.section-kicker {
+  color: #ff6a2a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.result-header h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+}
+
+.text-btn {
+  border: none;
+  background: transparent;
+  color: #ff6a2a;
+  font-weight: 800;
+}
+
+.content-text {
+  padding: 16px;
+  border-radius: 18px;
+  background: #fff;
+  color: #222;
+  line-height: 1.85;
+  font-size: 15px;
+}
+
+.content-text p {
+  margin: 0 0 8px;
+}
+
+.content-text p:last-child {
+  margin-bottom: 0;
 }
 
 .images-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+  margin-top: 14px;
 }
 
 .image-item {
-  position: relative;
+  border: none;
+  padding: 0;
   aspect-ratio: 1;
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
-  animation: fadeInUp 0.4s ease forwards;
-  opacity: 0;
+  background: #eee;
 }
 
 .image-item img {
@@ -686,185 +688,82 @@ const showToast = (message, type = 'success') => {
   object-fit: cover;
 }
 
-.image-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.image-item:hover .image-overlay {
-  opacity: 1;
-}
-
-/* 内容卡片 */
-.content-card {
-  background: var(--bg-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 16px;
-}
-
-.content-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.content-type {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.content-text {
-  background: #f9fafb;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.content-text:hover {
-  background: #f3f4f6;
-}
-
-.content-text p {
-  font-size: 14px;
-  line-height: 1.8;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-}
-
-.content-text p:last-child {
-  margin-bottom: 0;
-}
-
-.content-actions {
-  display: flex;
+.result-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
+  margin-top: 16px;
 }
 
-.content-actions .el-button {
-  flex: 1;
-}
-
-.btn-icon-sm {
-  width: 16px;
-  height: 16px;
-}
-
-/* 跳转区域 */
-.jump-section {
-  text-align: center;
-  padding: 20px 0;
-}
-
-.jump-hint {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
-  margin-bottom: 16px;
-}
-
-.platform-list {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
-.platform-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 16px 24px;
-  background: rgba(255, 255, 255, 0.95);
+.primary-action,
+.secondary-action {
+  min-height: 48px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 800;
   border: none;
-  border-radius: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
 }
 
-.platform-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+.primary-action {
+  color: #fff;
+  background: #111;
 }
 
-.platform-icon {
-  font-size: 28px;
+.secondary-action {
+  color: #111;
+  background: #fff;
+  border: 1px solid #e5e5e5;
 }
 
-.platform-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-/* 弹窗 */
 .dialog-content {
   padding: 8px 0;
 }
 
 .dialog-text {
   font-size: 16px;
-  color: var(--text-primary);
+  color: #111;
   margin-bottom: 20px;
 }
 
 .dialog-tips {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-  border-radius: 12px;
+  background: #f7f7f7;
+  border-radius: 16px;
   padding: 16px;
 }
 
 .dialog-tips p {
-  font-size: 14px;
-  color: #667eea;
-  margin-bottom: 8px;
+  margin: 0 0 8px;
+  color: #555;
 }
 
 .dialog-tips p:last-child {
   margin-bottom: 0;
 }
 
-/* Toast */
 .toast {
   position: fixed;
   top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 12px 24px;
-  border-radius: 12px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  color: #fff;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 700;
   z-index: 9999;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
 }
 
 .toast.success {
-  background: #10b981;
-  color: white;
+  background: #111;
 }
 
 .toast.error {
   background: #ef4444;
-  color: white;
 }
 
 .toast.warning {
   background: #f59e0b;
-  color: white;
 }
 
 .toast-enter-active,
@@ -875,23 +774,30 @@ const showToast = (message, type = 'success') => {
 .toast-enter-from,
 .toast-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(-20px);
+  transform: translateX(-50%) translateY(-16px);
 }
 
-/* 响应式 */
+@media (min-width: 640px) {
+  .h5-landing {
+    max-width: 520px;
+    margin: 0 auto;
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.12);
+  }
+}
+
 @media (max-width: 380px) {
-  .images-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .action-panel {
+    padding-left: 18px;
+    padding-right: 18px;
   }
 
-  .platform-list {
-    flex-direction: column;
+  .action-grid {
+    gap: 16px 14px;
   }
 
-  .platform-btn {
-    flex-direction: row;
-    justify-content: center;
-    gap: 12px;
+  .action-card {
+    min-height: 158px;
+    padding: 22px 18px 18px;
   }
 }
 </style>

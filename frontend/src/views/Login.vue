@@ -1,113 +1,128 @@
 <template>
-  <div class="login-page">
-    <!-- 背景 -->
-    <div class="login-bg"></div>
+  <div class="auth-page">
+    <div class="auth-shell">
+      <section class="brand-panel">
+        <div class="brand-badge">创码</div>
+        <h1 class="brand-title">营销商家管理平台</h1>
+        <p class="brand-desc">围绕商家运营、内容生成、素材管理与投放协同，打造更清晰的业务工作台。</p>
 
-    <!-- 登录卡片 -->
-    <div class="login-card">
-      <!-- Logo -->
-      <div class="login-header">
-        <div class="login-logo">
-          <span class="material-symbols-outlined text-4xl">qr_code_2</span>
+        <div class="brand-metrics">
+          <div class="metric-card">
+            <span class="metric-label">统一工作流</span>
+            <strong class="metric-value">商家配置到内容生产</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">双模式主题</span>
+            <strong class="metric-value">日间清晰 夜间稳重</strong>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">当前状态</span>
+            <strong class="metric-value">适合 B 端 SaaS 团队协作</strong>
+          </div>
         </div>
-        <h1 class="login-title">创码</h1>
-        <p class="login-subtitle">营销商家管理平台</p>
-      </div>
+      </section>
 
-      <!-- 登录方式切换 -->
-      <el-tabs v-model="loginType" class="login-tabs">
-        <el-tab-pane label="密码登录" name="password">
-          <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-position="top" class="login-form">
-            <el-form-item label="账号" prop="account" class="form-item">
-              <el-input
-                v-model="passwordForm.account"
-                placeholder="请输入手机号或账号"
-                size="large"
-                class="form-input"
-              />
-            </el-form-item>
-            <el-form-item label="密码" prop="password" class="form-item">
-              <el-input
-                v-model="passwordForm.password"
-                type="password"
-                placeholder="请输入密码"
-                size="large"
-                show-password
-                class="form-input"
-              />
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
+      <section class="auth-panel">
+        <div class="panel-top">
+          <div>
+            <h2 class="panel-title">{{ isRegister ? '创建企业账号' : '欢迎登录' }}</h2>
+            <p class="panel-subtitle">{{ isRegister ? '填写企业信息后即可立即进入系统。' : '支持账号密码和短信验证码两种方式。' }}</p>
+          </div>
+          <button class="theme-switch" type="button" @click="toggleTheme">
+            <span>{{ isDark ? '切换日间' : '切换夜间' }}</span>
+          </button>
+        </div>
 
-        <el-tab-pane label="验证码登录" name="sms">
-          <el-form ref="smsFormRef" :model="smsForm" :rules="smsRules" label-position="top" class="login-form">
-            <el-form-item label="手机号" prop="phone" class="form-item">
-              <el-input
-                v-model="smsForm.phone"
-                placeholder="请输入手机号"
-                size="large"
-                class="form-input"
-              />
+        <div class="mode-switch">
+          <button :class="['mode-btn', { active: !isRegister }]" type="button" @click="isRegister = false">登录</button>
+          <button :class="['mode-btn', { active: isRegister }]" type="button" @click="isRegister = true">注册</button>
+        </div>
+
+        <template v-if="!isRegister">
+          <el-tabs v-model="loginType" class="login-tabs">
+            <el-tab-pane label="密码登录" name="password">
+              <el-form ref="passwordFormRef" :model="passwordForm" :rules="passwordRules" label-position="top" class="auth-form">
+                <el-form-item label="账号" prop="account">
+                  <el-input v-model="passwordForm.account" size="large" placeholder="请输入手机号或企业名称" />
+                </el-form-item>
+                <el-form-item label="密码" prop="password">
+                  <el-input v-model="passwordForm.password" size="large" type="password" show-password placeholder="请输入登录密码" />
+                </el-form-item>
+              </el-form>
+            </el-tab-pane>
+
+            <el-tab-pane label="短信登录" name="sms">
+              <el-form ref="smsFormRef" :model="smsForm" :rules="smsRules" label-position="top" class="auth-form">
+                <el-form-item label="手机号" prop="phone">
+                  <el-input v-model="smsForm.phone" size="large" placeholder="请输入手机号" />
+                </el-form-item>
+                <el-form-item label="验证码" prop="code">
+                  <div class="code-row">
+                    <el-input v-model="smsForm.code" size="large" placeholder="请输入验证码" />
+                    <button class="code-btn" type="button" :disabled="countdown > 0" @click="sendCode('login')">
+                      {{ countdown > 0 ? `${countdown} 秒后重发` : '获取验证码' }}
+                    </button>
+                  </div>
+                </el-form-item>
+              </el-form>
+            </el-tab-pane>
+          </el-tabs>
+        </template>
+
+        <template v-else>
+          <el-form ref="registerFormRef" :model="registerForm" :rules="registerRules" label-position="top" class="auth-form">
+            <el-form-item label="企业名称" prop="company_name">
+              <el-input v-model="registerForm.company_name" size="large" placeholder="请输入企业名称" />
             </el-form-item>
-            <el-form-item label="验证码" prop="code" class="form-item">
-              <div class="code-input-wrap">
-                <el-input
-                  v-model="smsForm.code"
-                  placeholder="请输入验证码"
-                  size="large"
-                  class="form-input code-input"
-                />
-                <button
-                  type="button"
-                  class="code-btn"
-                  :disabled="countdown > 0"
-                  @click="sendCode"
-                >
-                  {{ countdown > 0 ? `${countdown} 秒` : '获取验证码' }}
+            <el-form-item label="手机号" prop="phone">
+              <el-input v-model="registerForm.phone" size="large" placeholder="请输入手机号" />
+            </el-form-item>
+            <el-form-item label="验证码" prop="code">
+              <div class="code-row">
+                <el-input v-model="registerForm.code" size="large" placeholder="请输入验证码" />
+                <button class="code-btn" type="button" :disabled="countdown > 0" @click="sendCode('register')">
+                  {{ countdown > 0 ? `${countdown} 秒后重发` : '获取验证码' }}
                 </button>
               </div>
             </el-form-item>
+            <el-form-item label="登录密码" prop="password">
+              <el-input v-model="registerForm.password" size="large" type="password" show-password placeholder="不少于 6 位" />
+            </el-form-item>
+            <el-form-item label="确认密码" prop="confirmPassword">
+              <el-input v-model="registerForm.confirmPassword" size="large" type="password" show-password placeholder="请再次输入密码" />
+            </el-form-item>
           </el-form>
-        </el-tab-pane>
-      </el-tabs>
+        </template>
 
-      <!-- 用户协议 -->
-      <div class="terms-wrap">
-        <el-checkbox v-model="agreeTerms" class="terms-checkbox">
-          <span class="terms-text">我已阅读并同意</span>
-        </el-checkbox>
-        <a href="#" class="terms-link">《用户协议》</a>
-      </div>
+        <div class="terms-row">
+          <el-checkbox v-model="agreeTerms">我已阅读并同意《用户协议》</el-checkbox>
+        </div>
 
-      <!-- 登录按钮 -->
-      <el-button
-        type="primary"
-        size="large"
-        :loading="loading"
-        @click="handleLogin"
-        class="login-btn"
-        :disabled="!agreeTerms"
-      >
-        登录
-      </el-button>
+        <el-button class="submit-btn" type="primary" size="large" :loading="loading" :disabled="!agreeTerms" @click="handleSubmit">
+          {{ isRegister ? '注册并进入系统' : '立即登录' }}
+        </el-button>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { auth } from '@/api'
 import { ElMessage } from 'element-plus'
+import { auth } from '@/api'
 
 const router = useRouter()
 const loginType = ref('password')
+const isRegister = ref(false)
 const loading = ref(false)
-const agreeTerms = ref(false)
+const agreeTerms = ref(true)
 const countdown = ref(0)
+const isDark = ref(localStorage.getItem('theme') === 'dark')
 
 const passwordFormRef = ref()
 const smsFormRef = ref()
+const registerFormRef = ref()
 
 const passwordForm = reactive({
   account: '',
@@ -119,56 +134,115 @@ const smsForm = reactive({
   code: ''
 })
 
+const registerForm = reactive({
+  company_name: '',
+  phone: '',
+  code: '',
+  password: '',
+  confirmPassword: ''
+})
+
+const phoneValidator = (_, value, callback) => {
+  if (!value) return callback(new Error('请输入手机号'))
+  if (!/^1\d{10}$/.test(value)) return callback(new Error('请输入正确的手机号'))
+  callback()
+}
+
+const confirmPasswordValidator = (_, value, callback) => {
+  if (!value) return callback(new Error('请再次输入密码'))
+  if (value !== registerForm.password) return callback(new Error('两次输入的密码不一致'))
+  callback()
+}
+
 const passwordRules = {
   account: [{ required: true, message: '请输入账号', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
 const smsRules = {
-  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
+  phone: [{ validator: phoneValidator, trigger: 'blur' }],
   code: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
 }
 
-const sendCode = async () => {
-  if (!smsForm.phone) {
+const registerRules = {
+  company_name: [{ required: true, message: '请输入企业名称', trigger: 'blur' }],
+  phone: [{ validator: phoneValidator, trigger: 'blur' }],
+  code: [{ required: true, message: '请输入验证码', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }, { min: 6, message: '密码至少 6 位', trigger: 'blur' }],
+  confirmPassword: [{ validator: confirmPasswordValidator, trigger: 'blur' }]
+}
+
+const activePhone = computed(() => isRegister.value ? registerForm.phone : smsForm.phone)
+
+const applyTheme = () => {
+  document.documentElement.classList.toggle('dark-theme', isDark.value)
+  document.documentElement.classList.toggle('light-theme', !isDark.value)
+  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
+}
+
+const toggleTheme = () => {
+  isDark.value = !isDark.value
+  applyTheme()
+}
+
+const persistLogin = (data) => {
+  localStorage.setItem('token', data.token)
+  localStorage.setItem('company_id', data.company_id)
+  localStorage.setItem('company_name', data.company_name)
+}
+
+const sendCode = async (type) => {
+  if (!activePhone.value) {
     ElMessage.warning('请先输入手机号')
     return
   }
+
   try {
-    await auth.sendSms({ phone: smsForm.phone, type: 'login' })
+    await auth.sendSms({ phone: activePhone.value, type })
     ElMessage.success('验证码已发送')
     countdown.value = 60
     const timer = setInterval(() => {
-      countdown.value--
-      if (countdown.value <= 0) clearInterval(timer)
+      countdown.value -= 1
+      if (countdown.value <= 0) {
+        clearInterval(timer)
+      }
     }, 1000)
   } catch (error) {
     console.error(error)
   }
 }
 
-const handleLogin = async () => {
+const handleSubmit = async () => {
   if (!agreeTerms.value) {
-    ElMessage.warning('请先阅读并同意用户协议')
+    ElMessage.warning('请先同意用户协议')
     return
   }
 
   loading.value = true
   try {
     let data
-    if (loginType.value === 'password') {
+
+    if (isRegister.value) {
+      await registerFormRef.value.validate()
+      data = await auth.register({
+        company_name: registerForm.company_name,
+        phone: registerForm.phone,
+        code: registerForm.code,
+        password: registerForm.password,
+        agree_terms: true
+      })
+      ElMessage.success('注册成功')
+    } else if (loginType.value === 'password') {
       await passwordFormRef.value.validate()
       data = await auth.loginByPassword({ ...passwordForm, agree_terms: true })
+      ElMessage.success('登录成功')
     } else {
       await smsFormRef.value.validate()
       data = await auth.loginBySms({ ...smsForm, agree_terms: true })
+      ElMessage.success('登录成功')
     }
 
-    localStorage.setItem('token', data.token)
-    localStorage.setItem('company_id', data.company_id)
-    localStorage.setItem('company_name', data.company_name)
-
-    ElMessage.success('登录成功')
+    persistLogin(data)
     router.push('/')
   } catch (error) {
     console.error(error)
@@ -176,275 +250,236 @@ const handleLogin = async () => {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  applyTheme()
+})
 </script>
 
 <style scoped>
-/* 登录页面 */
-.login-page {
+.auth-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
-  position: relative;
+  padding: 32px;
 }
 
-/* 背景 */
-.login-bg {
-  position: fixed;
-  inset: 0;
-  background: #0e0e0e;
-  z-index: 0;
+.auth-shell {
+  width: min(1180px, 100%);
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
 }
 
-/* 登录卡片 - 玻璃态 */
-.login-card {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 480px;
-  padding: 48px;
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
-  border: 0.5px solid rgba(255, 255, 255, 0.08);
-  border-radius: 32px;
-  animation: cardIn 0.6s ease-out;
+.brand-panel {
+  padding: 56px;
+  background:
+    linear-gradient(160deg, rgba(37, 99, 235, 0.92), rgba(29, 78, 216, 0.84)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0));
+  color: #fff;
 }
 
-@keyframes cardIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+html.dark-theme .auth-shell {
+  background: rgba(21, 34, 53, 0.9);
 }
 
-/* Logo 区域 */
-.login-header {
-  text-align: center;
-  margin-bottom: 48px;
+html.dark-theme .brand-panel {
+  background:
+    linear-gradient(160deg, rgba(19, 33, 53, 0.95), rgba(30, 58, 138, 0.88)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
 }
 
-.login-logo {
-  width: 80px;
-  height: 80px;
-  display: flex;
+.brand-badge {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  margin: 0 auto 24px;
-  background: linear-gradient(135deg, rgba(0, 122, 255, 0.2), rgba(0, 122, 255, 0.1));
-  border: 1px solid rgba(0, 122, 255, 0.3);
-  border-radius: 24px;
-  color: #007AFF;
-}
-
-.login-title {
-  font-family: 'Manrope', sans-serif;
-  font-weight: 800;
-  font-size: 36px;
-  color: #ffffff;
-  letter-spacing: -0.02em;
-  margin-bottom: 10px;
-}
-
-.login-subtitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  color: #919191;
-}
-
-/* 登录表单 */
-.login-tabs {
-  margin-bottom: 32px;
-}
-
-.login-tabs :deep(.el-tabs__header) {
-  margin-bottom: 28px;
-}
-
-.login-tabs :deep(.el-tabs__nav-wrap::after) {
-  display: none;
-}
-
-.login-tabs :deep(.el-tabs__item) {
-  font-family: 'Manrope', sans-serif;
-  font-weight: 600;
-  font-size: 15px;
-  color: #919191;
-  padding: 0 24px;
-  height: 44px;
-  line-height: 44px;
-}
-
-.login-tabs :deep(.el-tabs__item:hover) {
-  color: #c6c6c6;
-}
-
-.login-tabs :deep(.el-tabs__item.is-active) {
-  color: #007AFF;
-}
-
-.login-tabs :deep(.el-tabs__active-bar) {
-  height: 3px;
-  background: #007AFF;
-  border-radius: 3px;
-}
-
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* 表单项 */
-.form-item :deep(.el-form-item__label) {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 13px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: #919191;
-  margin-bottom: 12px;
-  padding: 0;
 }
 
-.form-input :deep(.el-input__wrapper) {
-  background: rgba(0, 0, 0, 0.4) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 14px !important;
-  box-shadow: none !important;
-  padding: 14px 18px !important;
-  transition: all 0.3s ease;
+.brand-title {
+  margin: 24px 0 12px;
+  font-family: var(--font-display);
+  font-size: 42px;
+  line-height: 1.12;
 }
 
-.form-input :deep(.el-input__inner) {
-  color: #ffffff !important;
-  font-family: 'Inter', sans-serif;
+.brand-desc {
+  margin: 0;
+  max-width: 520px;
   font-size: 15px;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.82);
 }
 
-.form-input :deep(.el-input__inner::placeholder) {
-  color: #474747;
+.brand-metrics {
+  display: grid;
+  gap: 16px;
+  margin-top: 40px;
 }
 
-.form-input :deep(.el-input__wrapper:hover) {
-  border-color: rgba(255, 255, 255, 0.2) !important;
+.metric-card {
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
-.form-input :deep(.el-input__wrapper.is-focus) {
-  border-color: #007AFF !important;
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1) !important;
+.metric-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.72);
 }
 
-/* 验证码输入 */
-.code-input-wrap {
+.metric-value {
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.auth-panel {
+  padding: 40px 40px 36px;
+  background: var(--surface);
+}
+
+.panel-top {
   display: flex;
-  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.code-input {
-  flex: 1;
+.panel-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 30px;
+  color: var(--text);
+}
+
+.panel-subtitle {
+  margin: 8px 0 0;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.theme-switch {
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 28px 0 24px;
+  padding: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.mode-btn {
+  min-height: 42px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-2);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mode-btn.active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.auth-form {
+  display: grid;
+  gap: 4px;
+}
+
+.auth-form :deep(.el-form-item__label) {
+  color: var(--text-2);
+  font-weight: 700;
+}
+
+.code-row {
+  display: grid;
+  grid-template-columns: 1fr 128px;
+  gap: 12px;
+  width: 100%;
 }
 
 .code-btn {
-  padding: 0 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  color: #e2e2e2;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s ease;
-  white-space: nowrap;
-}
-
-.code-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .code-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
-/* 用户协议 */
-.terms-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 28px;
+.terms-row {
+  margin: 18px 0 20px;
+  color: var(--text-2);
 }
 
-.terms-checkbox :deep(.el-checkbox__label) {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  color: #474747;
-  padding-left: 8px;
-}
-
-.terms-checkbox :deep(.el-checkbox__input.is-checked .el-checkbox__inner) {
-  background: #007AFF;
-  border-color: #007AFF;
-}
-
-.terms-checkbox :deep(.el-checkbox__inner) {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-}
-
-.terms-text {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  color: #474747;
-}
-
-.terms-link {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  color: #007AFF;
-  text-decoration: none;
-  transition: color 0.3s ease;
-}
-
-.terms-link:hover {
-  color: #3395ff;
-}
-
-/* 登录按钮 */
-.login-btn {
+.submit-btn {
   width: 100%;
-  height: 56px;
-  background: linear-gradient(135deg, #007AFF, #0055cc) !important;
-  border: none !important;
-  border-radius: 16px !important;
-  font-family: 'Manrope', sans-serif !important;
+  height: 48px;
+  border-radius: 12px !important;
+  font-size: 15px !important;
   font-weight: 700 !important;
-  font-size: 16px !important;
-  color: #ffffff !important;
-  box-shadow: 0 8px 28px -8px rgba(0, 122, 255, 0.5);
-  transition: all 0.3s ease;
 }
 
-.login-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 36px -8px rgba(0, 122, 255, 0.6);
+@media (max-width: 960px) {
+  .auth-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-panel {
+    padding: 32px;
+  }
+
+  .auth-panel {
+    padding: 28px 24px 24px;
+  }
 }
 
-.login-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+@media (max-width: 640px) {
+  .auth-page {
+    padding: 16px;
+  }
 
-.login-btn :deep(.el-icon) {
-  margin-right: 8px;
+  .brand-title {
+    font-size: 32px;
+  }
+
+  .code-row {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-top {
+    flex-direction: column;
+  }
 }
 </style>

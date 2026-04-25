@@ -26,6 +26,23 @@ export class GeneratorController {
     };
   }
 
+  @Post('review-preview')
+  async previewReview(@Request() req, @Body() body: {
+    merchant_id: string;
+    options?: any;
+  }) {
+    const data = await this.generatorService.previewReview(
+      req.user.tenantId,
+      body.merchant_id,
+      body.options || {},
+    );
+
+    return {
+      code: 200,
+      data,
+    };
+  }
+
   @Get('generations')
   async getGenerations(@Request() req, @Query() query: any) {
     return {

@@ -1,102 +1,124 @@
 <template>
   <div class="prompts-page">
-    <div class="toolbar">
-      <div class="filter-tabs">
-        <button
-          v-for="ind in industries"
-          :key="ind.value"
-          :class="['filter-tab', { active: activeIndustry === ind.value }]"
-          @click="activeIndustry = ind.value; page = 1; fetchPrompts()"
-        >{{ ind.label }}</button>
+    <div class="page-head">
+      <div>
+        <h2>提示词库</h2>
+        <p>配置 AI 的写作规则。通用规则会注入所有生成，点评/笔记规则只影响对应场景。</p>
       </div>
-      <button class="btn btn-primary" @click="showDialog = true; editTarget = null; form = { industry: '', style: '', content: '' }">
-        <svg width="0.625rem" height="0.625rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M12 5v14M5 12h14"/>
-        </svg>
+      <button class="btn btn-primary" @click="openCreate">
+        <span class="plus">+</span>
         新建提示词
       </button>
     </div>
 
+    <div class="toolbar">
+      <div class="filter-group">
+        <span class="filter-label">适用范围</span>
+        <button
+          v-for="item in scopes"
+          :key="item.value"
+          :class="['filter-tab', { active: activeScope === item.value }]"
+          @click="activeScope = item.value; page = 1; fetchPrompts()"
+        >
+          {{ item.label }}
+        </button>
+      </div>
+    </div>
+
     <div class="prompt-grid">
       <div
-        v-for="(p, i) in prompts"
-        :key="p.id"
+        v-for="(prompt, index) in prompts"
+        :key="prompt.id"
         class="prompt-card"
-        :style="{ animationDelay: `${i * 35}ms` }"
+        :style="{ animationDelay: `${index * 35}ms` }"
       >
         <div class="prompt-top">
           <div class="prompt-tags">
-            <span class="tag industry">{{ p.industry || '通用' }}</span>
-            <span class="tag style">{{ p.style || '默认' }}</span>
+            <span class="tag industry">{{ getScopeLabel(prompt.industry) }}</span>
+            <span class="tag style">{{ getSceneLabel(prompt.style) }}</span>
           </div>
-          <span :class="['status-badge', p.is_active !== false ? 'active' : 'inactive']">
-            {{ p.is_active !== false ? '开启' : '关闭' }}
+          <span :class="['status-badge', prompt.is_active !== false ? 'active' : 'inactive']">
+            {{ prompt.is_active !== false ? '启用' : '禁用' }}
           </span>
         </div>
-        <div class="prompt-text">{{ p.content }}</div>
+
+        <div class="prompt-text">{{ prompt.content }}</div>
+
         <div class="prompt-footer">
-          <button class="btn btn-outline btn-xs" @click="toggleActive(p)">
-            {{ p.is_active !== false ? '禁用' : '启用' }}
+          <button class="btn btn-outline btn-xs" @click="toggleActive(prompt)">
+            {{ prompt.is_active !== false ? '禁用' : '启用' }}
           </button>
-          <button class="btn btn-outline btn-xs" @click="openEdit(p)">编辑</button>
+          <button class="btn btn-outline btn-xs" @click="openEdit(prompt)">编辑</button>
         </div>
       </div>
 
       <div v-if="prompts.length === 0 && !loading" class="empty">
-        <svg width="1.5rem" height="1.5rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-        </svg>
         <p>暂无提示词</p>
       </div>
     </div>
 
     <div class="pagination" v-if="pageCount > 1">
       <button
-        v-for="p in pageCount"
-        :key="p"
-        :class="{ active: p === page }"
-        @click="page = p; fetchPrompts()"
-      >{{ p }}</button>
+        v-for="item in pageCount"
+        :key="item"
+        :class="{ active: item === page }"
+        @click="page = item; fetchPrompts()"
+      >
+        {{ item }}
+      </button>
     </div>
 
-    <!-- Dialog -->
     <div class="dialog-overlay" v-if="showDialog" @click.self="showDialog = false">
       <div class="dialog">
         <div class="dialog-header">
-          <div class="section-header" style="margin-bottom:0">
-            <div class="section-bar"></div>
-            <span class="section-title">{{ editTarget ? '编辑提示词' : '新建提示词' }}</span>
+          <div>
+            <h3>{{ editTarget ? '编辑提示词' : '新建提示词' }}</h3>
+            <p>推荐使用“通用 + 场景 + 行业”的层级配置，生成时会按这个顺序注入。</p>
           </div>
-          <button class="dialog-close" @click="showDialog = false">
-            <svg width="0.75rem" height="0.75rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-          </button>
+          <button class="dialog-close" @click="showDialog = false">×</button>
         </div>
+
         <div class="dialog-body">
           <div class="form-row">
             <div class="form-item">
-              <label>行业</label>
-              <select v-model="form.industry" class="input input-select">
-                <option v-for="ind in industries.slice(1)" :key="ind.value" :value="ind.value">{{ ind.label }}</option>
+              <label>适用范围</label>
+              <select v-model="form.industry" class="input input-select" :disabled="Boolean(editTarget)">
+                <option v-for="item in scopes.slice(1)" :key="item.value" :value="item.value">
+                  {{ item.label }}
+                </option>
               </select>
             </div>
             <div class="form-item">
-              <label>风格</label>
-              <select v-model="form.style" class="input input-select">
-                <option v-for="s in styles" :key="s.value" :value="s.value">{{ s.label }}</option>
+              <label>生成场景</label>
+              <select v-model="form.style" class="input input-select" :disabled="Boolean(editTarget)">
+                <option v-for="item in scenes" :key="item.value" :value="item.value">
+                  {{ item.label }}
+                </option>
               </select>
             </div>
           </div>
+
+          <div class="helper-card">
+            <strong>当前规则含义：</strong>
+            <span>{{ getRuleHint(form.industry, form.style) }}</span>
+          </div>
+
           <div class="form-item">
-            <label>内容</label>
-            <textarea v-model="form.content" class="input textarea" rows="6" placeholder="输入提示词内容..."></textarea>
+            <label>提示词内容</label>
+            <textarea
+              v-model="form.content"
+              class="input textarea"
+              rows="8"
+              placeholder="例如：内容必须真实自然，像真实顾客表达；不要虚构价格、地址、营业时间。"
+            ></textarea>
           </div>
         </div>
+
         <div class="dialog-footer">
           <button class="btn btn-outline" @click="showDialog = false">取消</button>
-          <button class="btn btn-primary" :loading="saveLoading" @click="handleSave">{{ editTarget ? '保存' : '创建' }}</button>
+          <button class="btn btn-primary" :disabled="saveLoading" @click="handleSave">
+            {{ saveLoading ? '保存中...' : editTarget ? '保存' : '创建' }}
+          </button>
         </div>
       </div>
     </div>
@@ -113,49 +135,82 @@ const loading = ref(false)
 const page = ref(1)
 const pageSize = ref(12)
 const total = ref(0)
-const activeIndustry = ref('all')
+const activeScope = ref('all')
 
-const industries = [
+const scopes = [
   { label: '全部', value: 'all' },
+  { label: '通用', value: 'general' },
   { label: '餐饮', value: 'catering' },
+  { label: '美业', value: 'beauty' },
   { label: '零售', value: 'retail' },
-  { label: '美容', value: 'beauty' },
   { label: '教育', value: 'education' },
-  { label: '通用', value: 'general' }
+  { label: '其他', value: 'other' }
 ]
 
-const styles = [
-  { label: '正式', value: 'formal' },
-  { label: '活泼', value: 'playful' },
-  { label: '简约', value: 'minimal' },
-  { label: '高端', value: 'premium' }
+const scenes = [
+  { label: '通用规则', value: 'common' },
+  { label: '点评生成', value: 'review' },
+  { label: '小红书笔记', value: 'note' }
 ]
 
 const showDialog = ref(false)
 const saveLoading = ref(false)
 const editTarget = ref(null)
-const form = ref({ industry: '', style: '', content: '' })
+const form = ref({ industry: 'general', style: 'common', content: '' })
 
 const pageCount = computed(() => Math.ceil(total.value / pageSize.value))
+
+const getScopeLabel = (value) => scopes.find(item => item.value === value)?.label || '其他'
+const getSceneLabel = (value) => scenes.find(item => item.value === value)?.label || '通用规则'
+
+const getRuleHint = (industry, style) => {
+  if (industry === 'general' && style === 'common') return '系统通用提示词规则，会注入点评、笔记和 H5 生成。'
+  if (industry === 'general' && style === 'review') return '点评生成通用规则，只影响大众点评/美团风格内容。'
+  if (industry === 'general' && style === 'note') return '小红书笔记通用规则，只影响笔记内容。'
+  return '行业场景规则，只在商家行业和生成场景同时匹配时注入。'
+}
 
 const fetchPrompts = async () => {
   loading.value = true
   try {
     const params = { page: page.value, page_size: pageSize.value }
-    if (activeIndustry.value !== 'all') params.industry = activeIndustry.value
+    if (activeScope.value !== 'all') params.industry = activeScope.value
     const data = await admin.prompts.list(params)
     prompts.value = data?.list || []
     total.value = data?.total || 0
-  } catch (e) { console.error(e) }
-  finally { loading.value = false }
+  } catch (error) {
+    console.error(error)
+  } finally {
+    loading.value = false
+  }
+}
+
+const openCreate = () => {
+  editTarget.value = null
+  form.value = { industry: 'general', style: 'common', content: '' }
+  showDialog.value = true
+}
+
+const openEdit = (prompt) => {
+  editTarget.value = prompt
+  form.value = {
+    industry: prompt.industry || 'general',
+    style: prompt.style || 'common',
+    content: prompt.content || ''
+  }
+  showDialog.value = true
 }
 
 const handleSave = async () => {
-  if (!form.value.content) { ElMessage.warning('Enter prompt content'); return }
+  if (!form.value.content.trim()) {
+    ElMessage.warning('请输入提示词内容')
+    return
+  }
+
   saveLoading.value = true
   try {
     if (editTarget.value) {
-      await admin.prompts.update(editTarget.value.id, form.value)
+      await admin.prompts.update(editTarget.value.id, { content: form.value.content })
       ElMessage.success('保存成功')
     } else {
       await admin.prompts.create(form.value)
@@ -164,203 +219,256 @@ const handleSave = async () => {
     showDialog.value = false
     editTarget.value = null
     fetchPrompts()
-  } catch (e) { console.error(e) }
-  finally { saveLoading.value = false }
+  } catch (error) {
+    console.error(error)
+  } finally {
+    saveLoading.value = false
+  }
 }
 
-const openEdit = (p) => {
-  editTarget.value = p
-  form.value = { industry: p.industry || '', style: p.style || '', content: p.content || '' }
-  showDialog.value = true
-}
-
-const toggleActive = async (p) => {
+const toggleActive = async (prompt) => {
   try {
-    await admin.prompts.update(p.id, { is_active: p.is_active === false ? true : false })
-    ElMessage.success('更新成功')
+    await admin.prompts.update(prompt.id, { is_active: prompt.is_active === false })
+    ElMessage.success('状态已更新')
     fetchPrompts()
-  } catch (e) { console.error(e) }
+  } catch (error) {
+    console.error(error)
+  }
 }
 
-onMounted(() => { fetchPrompts() })
+onMounted(fetchPrompts)
 </script>
 
 <style scoped>
-.prompts-page { animation: fadeUp 0.4s ease-out; }
+.prompts-page {
+  animation: fadeUp 0.4s ease-out;
+}
+
+.page-head,
+.toolbar,
+.prompt-card,
+.dialog {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.page-head h2,
+.dialog h3 {
+  margin: 0;
+  color: var(--text-primary, #111827);
+}
+
+.page-head p,
+.dialog p {
+  margin: 0.35rem 0 0;
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.875rem;
+}
 
 .toolbar {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 0.75rem; gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  margin-bottom: 1rem;
 }
-.filter-tabs { display: flex; gap: 3px; flex-wrap: wrap; }
-.filter-tab {
-  padding: 0.25rem 0.625rem;
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.875rem;
+}
+
+.filter-tab,
+.btn,
+.pagination button {
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--surface-bg, #f8fafc);
+  color: var(--text-primary, #111827);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+}
+
+.filter-tab.active,
+.btn-primary,
+.pagination .active {
+  background: #1f2937;
+  color: #fff;
+  border-color: #1f2937;
+}
+
+.btn-outline {
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text-2);
-  font-family: var(--font-mono);
-  font-size: var(--font-xs); cursor: pointer; transition: all 0.12s;
-  letter-spacing: 0.03em;
 }
-.filter-tab:hover { background: rgba(255,255,255,0.03); color: var(--text); }
-.filter-tab.active {
-  background: var(--accent-dim); border-color: var(--accent);
-  color: var(--accent);
+
+.btn-xs {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+}
+
+.plus {
+  margin-right: 0.25rem;
 }
 
 .prompt-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
 }
+
 .prompt-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.75rem;
-  display: flex; flex-direction: column; gap: 0.5rem;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
-  transition: border-color 0.12s, box-shadow 0.12s;
-  animation: fadeUp 0.3s ease-out both;
-}
-.prompt-card:hover {
-  border-color: var(--border-bright);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  padding: 1rem;
 }
 
-.prompt-top {
-  display: flex; align-items: center; justify-content: space-between;
+.prompt-top,
+.prompt-footer,
+.dialog-header,
+.dialog-footer,
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
-.prompt-tags { display: flex; gap: 3px; flex-wrap: wrap; }
-.tag {
-  padding: 2px 6px; border-radius: 3px;
-  font-family: var(--font-mono);
-  font-size: 0.55rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.05em;
-}
-.tag.industry { background: var(--accent-dim); color: var(--accent); }
-.tag.style { background: rgba(255,255,255,0.05); color: var(--text-2); }
 
+.prompt-tags {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.tag,
 .status-badge {
-  font-family: var(--font-mono);
-  font-size: 0.55rem; font-weight: 700;
-  padding: 2px 6px; border-radius: 3px;
-  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
 }
-.status-badge.active { background: rgba(0,212,170,0.12); color: #00d4aa; }
-.status-badge.inactive { background: rgba(255,255,255,0.04); color: var(--text-3); }
+
+.tag {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.status-badge.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge.inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
 
 .prompt-text {
-  flex: 1;
-  font-size: var(--font-xs); color: var(--text);
-  line-height: 1.6;
-  max-height: 3.5rem; overflow: hidden;
-  position: relative;
-}
-.prompt-text::after {
-  content: '';
-  position: absolute; bottom: 0; left: 0; right: 0;
-  height: 1.25rem;
-  background: linear-gradient(transparent, var(--surface));
-}
-
-.prompt-footer { display: flex; gap: 3px; }
-.btn-xs { padding: 0.2rem 0.375rem; font-size: var(--font-xs); }
-
-/* 斑马纹 */
-.prompt-card:nth-child(even) {
-  background: rgba(255,255,255,0.008);
-}
-
-.pagination { display: flex; justify-content: center; gap: 4px; margin-top: 1rem; }
-.pagination button {
-  padding: 0.25rem 0.5rem;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); color: var(--text-2);
-  font-family: var(--font-mono); font-size: var(--font-xs); cursor: pointer;
-  transition: all 0.12s;
-}
-.pagination button:hover { background: rgba(255,255,255,0.03); color: var(--text); }
-.pagination button.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-
-/* Dialog */
-.dialog-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.7);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 1000; backdrop-filter: blur(4px);
-}
-.dialog {
-  background: var(--surface-2);
-  border: 1px solid var(--border-bright);
-  border-radius: var(--radius);
-  width: 22rem; max-width: 90vw;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-  animation: dialogIn 0.2s ease-out;
-}
-@keyframes dialogIn {
-  from { opacity: 0; transform: scale(0.97) translateY(-4px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
-}
-.dialog-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);
-}
-.dialog-close {
-  width: 1.25rem; height: 1.25rem;
-  border-radius: var(--radius);
-  background: transparent; border: none; color: var(--text-2);
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  transition: all 0.12s;
-}
-.dialog-close:hover { background: rgba(255,255,255,0.06); color: var(--text); }
-.dialog-body { padding: 1rem; }
-.dialog-footer {
-  display: flex; justify-content: flex-end; gap: 0.375rem;
-  padding: 0.625rem 1rem; border-top: 1px solid var(--border);
-}
-
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-.form-item { margin-bottom: 0.75rem; }
-.form-item:last-child { margin-bottom: 0; }
-.form-item label {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: var(--font-xs); color: var(--text-2);
-  margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.08em;
-}
-.form-item .input, .form-item select { width: 100%; }
-.textarea { resize: vertical; min-height: 5rem; line-height: 1.6; }
-
-.input-select {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='0.5rem' height='0.5rem' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.5rem center;
-  padding-right: 1.25rem;
-  cursor: pointer;
+  color: var(--text-primary, #111827);
+  line-height: 1.7;
+  min-height: 7rem;
+  margin: 1rem 0;
+  white-space: pre-wrap;
 }
 
 .empty {
-  grid-column: 1/-1;
-  display: flex; flex-direction: column; align-items: center;
-  gap: 0.5rem; padding: 2.5rem; color: var(--text-3);
-}
-.empty svg { opacity: 0.25; }
-.empty p { font-family: var(--font-mono); font-size: var(--font-sm); }
-
-/* Section header */
-.section-header { display: flex; align-items: center; gap: 0.5rem; }
-.section-bar { width: 20px; height: 2px; background: var(--accent); border-radius: 1px; flex-shrink: 0; }
-.section-title {
-  font-family: var(--font-mono);
-  font-size: var(--font-xs); font-weight: 700; color: #fff;
-  text-transform: uppercase; letter-spacing: 0.08em;
+  grid-column: 1 / -1;
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary, #6b7280);
 }
 
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+}
+
+.dialog {
+  width: min(680px, calc(100vw - 2rem));
+  padding: 1rem;
+}
+
+.dialog-close {
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-secondary, #6b7280);
+}
+
+.dialog-body {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.form-row {
+  align-items: flex-start;
+}
+
+.form-item {
+  display: grid;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.form-item label {
+  color: var(--text-primary, #111827);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  background: var(--surface-bg, #fff);
+  color: var(--text-primary, #111827);
+}
+
+.textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.helper-card {
+  background: #f8fafc;
+  color: #334155;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 0.75rem 0.9rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+  .page-head,
+  .form-row,
+  .dialog-header,
+  .dialog-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>

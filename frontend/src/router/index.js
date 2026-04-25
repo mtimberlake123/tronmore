@@ -22,12 +22,14 @@ const routes = [
       {
         path: 'merchants/create',
         name: 'MerchantCreate',
-        component: () => import('@/views/merchant/Create.vue')
+        component: () => import('@/views/merchant/Create.vue'),
+        meta: { hideTopbar: true }
       },
       {
         path: 'merchants/:id',
         name: 'MerchantDetail',
-        component: () => import('@/views/merchant/Detail.vue')
+        component: () => import('@/views/merchant/Detail.vue'),
+        meta: { hideTopbar: true }
       },
       {
         path: 'factory',

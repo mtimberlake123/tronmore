@@ -42,7 +42,7 @@
             <span class="stat-key">商家</span>
           </div>
           <div class="stat">
-            <span class="stat-val mono" :class="{ 'accent': c.balance > 0 }">{{ c.balance?.toLocaleString() || 0 }}</span>
+            <span class="stat-val mono" :class="{ 'accent': c.company_balance > 0 }">{{ c.company_balance?.toLocaleString() || 0 }}</span>
             <span class="stat-key">额度</span>
           </div>
           <div class="stat">
@@ -61,7 +61,7 @@
           <rect x="3" y="3" width="18" height="18" rx="2"/>
           <path d="M9 9h6M9 13h4"/>
         </svg>
-        <p>No companies found</p>
+        <p>暂无公司数据</p>
       </div>
     </div>
 
@@ -295,7 +295,7 @@ const fetchCompanies = async () => {
 
 const handleCreate = async () => {
   if (!createForm.value.name || !createForm.value.phone) {
-    ElMessage.warning('Please fill in name and phone'); return
+    ElMessage.warning('请完善公司名称和手机号'); return
   }
   createLoading.value = true
   try {
@@ -318,7 +318,7 @@ const handleRecharge = async () => {
   if (!rechargeForm.value.amount) { ElMessage.warning('请输入充值金额'); return }
   rechargeLoading.value = true
   try {
-    await admin.companies.recharge(rechargeTarget.value.id, rechargeForm.value)
+    await admin.companies.recharge(rechargeTarget.value.company_id || rechargeTarget.value.id, rechargeForm.value)
     ElMessage.success('充值成功')
     showRechargeDialog.value = false
     fetchCompanies()

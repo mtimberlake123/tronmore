@@ -103,10 +103,9 @@ const handleSingleChange = async (file) => {
     return
   }
 
-  // 无 merchantId 时使用 blob URL（用于不需要持久化的场景）
   if (!props.merchantId) {
-    const url = URL.createObjectURL(file.raw)
-    emit('update:modelValue', url)
+    const base64 = await fileToBase64(file.raw)
+    emit('update:modelValue', base64)
     return
   }
 
@@ -130,16 +129,16 @@ const handleSingleChange = async (file) => {
 
 // 多图上传
 const handleMultipleChange = async (file) => {
-  if (!props.merchantId) {
-    const url = URL.createObjectURL(file.raw)
-    imageList.value.push(url)
-    emit('update:modelValue', [...imageList.value])
-    return
-  }
-
   // 文件大小限制 5MB
   if (file.size > 5 * 1024 * 1024) {
     ElMessage.error('图片大小不能超过 5MB')
+    return
+  }
+
+  if (!props.merchantId) {
+    const base64 = await fileToBase64(file.raw)
+    imageList.value.push(base64)
+    emit('update:modelValue', [...imageList.value])
     return
   }
 
@@ -167,8 +166,8 @@ const fileToBase64 = (file) => {
     reader.onload = (e) => {
       const img = new Image()
       img.onload = () => {
-        // 压缩到最大 800px 宽
-        const maxWidth = 800
+        // 控制 base64 体积，避免参考图随 JSON 提交时触发 413。
+        const maxWidth = 600
         let width = img.width
         let height = img.height
         if (width > maxWidth) {
@@ -180,7 +179,7 @@ const fileToBase64 = (file) => {
         canvas.height = height
         const ctx = canvas.getContext('2d')
         ctx.drawImage(img, 0, 0, width, height)
-        resolve(canvas.toDataURL('image/jpeg', 0.7))
+        resolve(canvas.toDataURL('image/jpeg', 0.62))
       }
       img.onerror = reject
       img.src = e.target.result

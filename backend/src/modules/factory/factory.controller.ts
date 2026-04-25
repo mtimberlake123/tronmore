@@ -8,6 +8,59 @@ import { CurrentUser } from '../auth/current-user.decorator';
 export class FactoryController {
   constructor(private factoryService: FactoryService) {}
 
+  @Get('factory/modules')
+  async getFactoryModules() {
+    return {
+      code: 200,
+      data: await this.factoryService.getFactoryModules(),
+    };
+  }
+
+  @Post('factory/generations')
+  async createFactoryGeneration(
+    @Body() body: {
+      merchant_id: string;
+      module_key: string;
+      prompt: string;
+      ratio: string;
+      style: string;
+      reference_images?: string[];
+    },
+    @CurrentUser() user: any,
+  ) {
+    return {
+      code: 200,
+      data: await this.factoryService.createFactoryGeneration({
+        ...body,
+        tenantId: user.tenantId,
+      }),
+    };
+  }
+
+  @Get('factory/generations/:id')
+  async getFactoryGeneration(@Param('id') id: string, @CurrentUser() user: any) {
+    return {
+      code: 200,
+      data: await this.factoryService.getFactoryGeneration(id, user.tenantId),
+    };
+  }
+
+  @Get('factory/history')
+  async getFactoryHistory(@Query() query: {
+    module_key?: string;
+    merchant_id?: string;
+    page?: number;
+    page_size?: number;
+  }, @CurrentUser() user: any) {
+    return {
+      code: 200,
+      data: await this.factoryService.getFactoryHistory({
+        ...query,
+        tenantId: user.tenantId,
+      }),
+    };
+  }
+
   /**
    * 海报模板列表
    * GET /poster/templates

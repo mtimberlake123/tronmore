@@ -24,6 +24,15 @@ export class QuotaController {
     };
   }
 
+  @Get('quota/balance')
+  @UseGuards(JwtAuthGuard)
+  async getTenantBalance(@Req() req: any) {
+    return {
+      code: 200,
+      data: await this.quotaService.getBalance(req.user),
+    };
+  }
+
   @Post('merchants/:id/quota/allocate')
   @UseGuards(JwtAuthGuard)
   async allocate(@Param('id') id: string, @Body() body: { amount: number }) {

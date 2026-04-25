@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { resolve } from 'path';
 import { AuthModule } from './modules/auth/auth.module';
 import { MerchantModule } from './modules/merchant/merchant.module';
 import { GeneratorModule } from './modules/generator/generator.module';
@@ -17,9 +18,9 @@ import { AiModule } from './modules/ai/ai.module';
   imports: [
     TypeOrmModule.forRoot({
       type: 'sqlite',
-      database: process.env.DB_PATH || 'tronmore.db',
+      database: process.env.DB_PATH || resolve(process.cwd(), '..', 'tronmore.db'),
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true, // 开发环境自动创建表
+      synchronize: true,
     }),
     AiModule,
     AuthModule,

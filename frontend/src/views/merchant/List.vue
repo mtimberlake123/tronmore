@@ -1,24 +1,19 @@
 <template>
   <div class="merchant-list">
-    <!-- 操作栏 -->
     <div class="action-bar">
-      <div class="action-left">
+      <div>
         <h1 class="page-title">商家中心</h1>
-        <p class="page-subtitle">管理您的营销商家资产</p>
+        <p class="page-subtitle">管理你的门店资料、素材和生成额度</p>
       </div>
       <div class="action-right">
-        <el-select v-model="filterSort" placeholder="排序" size="large" class="sort-select">
+        <el-select v-model="filterSort" placeholder="排序" size="large" class="sort-select" @change="fetchList">
           <el-option label="最近添加" value="created_at_desc" />
-          <el-option label="日活最高" value="daily_active_desc" />
           <el-option label="剩余额度" value="balance_desc" />
         </el-select>
-        <el-button type="primary" size="large" @click="goToCreate" class="add-btn">
-          新增
-        </el-button>
+        <el-button type="primary" size="large" @click="goToCreate" class="add-btn">新增商家</el-button>
       </div>
     </div>
 
-    <!-- 商家列表网格 -->
     <div v-if="merchantList.length > 0" class="merchant-grid">
       <div
         v-for="(item, index) in merchantList"
@@ -27,24 +22,21 @@
         :style="{ animationDelay: `${index * 60}ms` }"
         @click="goToDetail(item.id)"
       >
-        <!-- 状态角标 -->
         <div class="card-badges">
           <span v-if="item.status_tag === 'new'" class="badge badge-new">新商家</span>
           <span v-if="item.status_tag === 'low_balance'" class="badge badge-warning">余额不足</span>
         </div>
 
-        <!-- 更多操作按钮 -->
         <div class="more-btn-wrapper" @click.stop>
-          <button class="more-btn" @click.stop="toggleDropdown(item.id)">...</button>
+          <button class="more-btn" type="button" @click.stop="toggleDropdown(item.id)">...</button>
           <div v-if="activeDropdown === item.id" class="dropdown-menu">
-            <div class="dropdown-item" @click="handleCopy(item)">复制</div>
-            <div class="dropdown-item danger" @click="handleDeleteClick(item)">删除</div>
+            <button class="dropdown-item" type="button" @click="handleCopy(item)">复制</button>
+            <button class="dropdown-item danger" type="button" @click="handleDeleteClick(item)">删除</button>
           </div>
         </div>
 
-        <!-- 商家Logo和名称 -->
         <div class="merchant-header">
-          <el-avatar :size="34" :src="item.logo" class="merchant-logo">
+          <el-avatar :size="38" :src="item.logo" class="merchant-logo">
             <span class="material-symbols-outlined text-2xl text-on-surface-variant">storefront</span>
           </el-avatar>
           <div class="merchant-info">
@@ -53,14 +45,13 @@
           </div>
         </div>
 
-        <!-- 额度进度 -->
         <div class="quota-section">
           <div class="quota-header">
             <div class="quota-left">
-              <span class="quota-label">剩余额度</span>
+              <span class="quota-label">门店剩余额度</span>
               <span class="quota-value">{{ item.balance }} 次</span>
             </div>
-            <el-button size="small" class="recharge-btn">充值</el-button>
+            <el-button size="small" class="recharge-btn" @click.stop="openRecharge(item)">分配额度</el-button>
           </div>
           <div class="quota-bar">
             <div class="quota-progress" :style="{ width: `${item.balance_percent}%` }"></div>
@@ -69,25 +60,20 @@
       </div>
     </div>
 
-    <!-- 空状态 -->
     <div v-else-if="!loading" class="empty-state">
       <div class="empty-icon">
         <span class="material-symbols-outlined text-8xl">inbox</span>
       </div>
       <h3 class="empty-title">暂无商家</h3>
-      <p class="empty-desc">点击下方按钮添加您的第一个商家</p>
-      <el-button type="primary" size="large" @click="goToCreate" class="add-btn">
-        新增
-      </el-button>
+      <p class="empty-desc">点击下方按钮添加你的第一个商家</p>
+      <el-button type="primary" size="large" @click="goToCreate" class="add-btn">新增商家</el-button>
     </div>
 
-    <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <div class="loading-spinner"></div>
       <p class="loading-text">加载中...</p>
     </div>
 
-    <!-- 分页 -->
     <div v-if="total > pageSize" class="pagination-wrap">
       <el-pagination
         v-model:current-page="page"
@@ -99,18 +85,29 @@
       />
     </div>
 
-    <!-- 删除确认弹窗 -->
-    <el-dialog v-model="showDeleteDialog" title="确认删除" width="420px" class="delete-dialog">
-      <div class="delete-content">
+    <el-dialog v-model="showRechargeDialog" title="分配门店额度" width="420px" class="action-dialog">
+      <div class="dialog-content">
+        <p class="dialog-title">给「{{ rechargeTarget?.name }}」分配额度</p>
+        <p class="dialog-hint">额度会从当前营销公司的未分配额度池中扣除，并增加到该门店。</p>
+        <el-input-number v-model="rechargeAmount" :min="1" :step="10" class="quota-input" />
+      </div>
+      <template #footer>
+        <el-button @click="showRechargeDialog = false" size="large">取消</el-button>
+        <el-button type="primary" @click="handleRecharge" size="large" :loading="rechargeLoading">确认分配</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="showDeleteDialog" title="确认删除" width="420px" class="action-dialog">
+      <div class="dialog-content">
         <div class="delete-icon">
           <span class="material-symbols-outlined text-4xl">warning</span>
         </div>
-        <p class="delete-text">确定要删除商家「{{ currentMerchant?.name }}」吗？</p>
-        <p class="delete-hint">此操作不可恢复，删除后数据将无法找回</p>
+        <p class="dialog-title">确定要删除商家「{{ currentMerchant?.name }}」吗？</p>
+        <p class="dialog-hint">此操作不可恢复，删除后数据将无法找回。</p>
       </div>
       <template #footer>
-        <el-button @click="showDeleteDialog = false" size="large" class="cancel-btn">取消</el-button>
-        <el-button type="danger" @click="handleDelete" size="large" class="delete-btn">确认删除</el-button>
+        <el-button @click="showDeleteDialog = false" size="large">取消</el-button>
+        <el-button type="danger" @click="handleDelete" size="large">确认删除</el-button>
       </template>
     </el-dialog>
   </div>
@@ -119,7 +116,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { merchant } from '@/api'
+import { merchant, quota } from '@/api'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
@@ -134,6 +131,11 @@ const filterSort = ref('created_at_desc')
 const showDeleteDialog = ref(false)
 const currentMerchant = ref(null)
 const activeDropdown = ref(null)
+
+const showRechargeDialog = ref(false)
+const rechargeTarget = ref(null)
+const rechargeAmount = ref(10)
+const rechargeLoading = ref(false)
 
 const toggleDropdown = (id) => {
   activeDropdown.value = activeDropdown.value === id ? null : id
@@ -155,15 +157,6 @@ const fetchList = async () => {
     console.error(e)
   } finally {
     loading.value = false
-  }
-}
-
-const handleCommand = (cmd, item) => {
-  currentMerchant.value = item
-  if (cmd === 'delete') {
-    showDeleteDialog.value = true
-  } else if (cmd === 'copy') {
-    handleCopy(item)
   }
 }
 
@@ -195,12 +188,38 @@ const handleDelete = async () => {
   }
 }
 
+const openRecharge = (item) => {
+  rechargeTarget.value = item
+  rechargeAmount.value = 10
+  showRechargeDialog.value = true
+}
+
+const handleRecharge = async () => {
+  if (!rechargeTarget.value || !rechargeAmount.value) return
+
+  rechargeLoading.value = true
+  try {
+    await quota.allocate(rechargeTarget.value.id, { amount: rechargeAmount.value })
+    ElMessage.success('额度分配成功')
+    showRechargeDialog.value = false
+    await fetchList()
+  } catch (e) {
+    console.error(e)
+  } finally {
+    rechargeLoading.value = false
+  }
+}
+
 const goToDetail = (id) => {
   router.push(`/merchants/${id}`)
 }
 
 const goToCreate = () => {
   router.push('/merchants/create')
+}
+
+const closeDropdown = () => {
+  activeDropdown.value = null
 }
 
 onMounted(() => {
@@ -211,14 +230,9 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', closeDropdown)
 })
-
-const closeDropdown = () => {
-  activeDropdown.value = null
-}
 </script>
 
 <style scoped>
-/* 页面布局 */
 .merchant-list {
   animation: fadeIn 0.5s ease-out;
 }
@@ -228,39 +242,25 @@ const closeDropdown = () => {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* 页面标题 */
-.page-title {
-  font-family: 'Manrope', sans-serif;
-  font-weight: 800;
-  font-size: 20px;
-  color: var(--text);
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-
-.page-subtitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 9px;
-  color: var(--text-3);
-  line-height: 1.5;
-}
-
-/* 操作栏 - 单行布局 - 精致缩小 */
 .action-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
   padding: 14px 18px;
-  background: transparent;
-  border: none;
-  border-radius: 0;
 }
 
-.action-left {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.page-title {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--text);
+}
+
+.page-subtitle {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 4px;
 }
 
 .action-right {
@@ -269,566 +269,263 @@ const closeDropdown = () => {
   align-items: center;
 }
 
-/* 排序选择器 */
 .sort-select {
-  width: 112px;
+  width: 128px;
 }
 
-/* 新增按钮 */
 .add-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 20px;
-  background: linear-gradient(135deg, #007AFF, #0055cc);
-  border: none;
   border-radius: 10px;
-  font-family: 'Manrope', sans-serif;
   font-weight: 700;
-  font-size: 10px;
-  color: var(--text);
-  box-shadow: 0 4px 14px -3px rgba(0, 122, 255, 0.4);
-  transition: all 0.3s ease;
 }
 
-.add-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px -3px rgba(0, 122, 255, 0.5);
-}
-
-/* 商家网格 - 24px 卡片间距 */
 .merchant-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 24px;
 }
 
-/* 商家卡片 - 玻璃态设计 - 缩小30% */
 .merchant-card {
   position: relative;
-  padding: 14px;
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 0.5px solid rgba(255, 255, 255, 0.08);
-  border-radius: 17px;
+  padding: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.09);
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  animation: cardIn 0.5s ease-out both;
-}
-
-@keyframes cardIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  transition: all 0.25s ease;
 }
 
 .merchant-card:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(37, 99, 235, 0.34);
+  box-shadow: 0 20px 46px rgba(15, 23, 42, 0.13);
   transform: translateY(-3px);
-  box-shadow: 0 14px 28px -8px rgba(0, 0, 0, 0.4);
 }
 
-/* 卡片角标 */
 .card-badges {
   position: absolute;
-  top: 11px;
-  left: 11px;
+  top: 12px;
+  left: 12px;
   display: flex;
   gap: 6px;
-  z-index: 1;
 }
 
 .badge {
   padding: 3px 7px;
   border-radius: 6px;
-  font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: 7px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-size: 10px;
 }
 
 .badge-new {
   background: rgba(82, 196, 26, 0.15);
-  border: 1px solid rgba(82, 196, 26, 0.3);
   color: #82c41c;
 }
 
 .badge-warning {
-  background: rgba(230, 162, 60, 0.15);
-  border: 1px solid rgba(230, 162, 60, 0.3);
-  color: #e6a23c;
+  background: rgba(255, 107, 53, 0.16);
+  color: #ff8a4c;
 }
 
-/* 更多操作按钮 */
 .more-btn-wrapper {
   position: absolute;
-  top: 11px;
-  right: 11px;
-  z-index: 10;
+  top: 10px;
+  right: 10px;
 }
 
 .more-btn {
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
-  color: var(--text-3);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 11px;
-  font-weight: bold;
-}
-
-.more-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
   color: var(--text);
+  cursor: pointer;
 }
 
 .dropdown-menu {
   position: absolute;
-  top: 100%;
+  top: 34px;
   right: 0;
-  margin-top: 6px;
-  background: #1f1f1f;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  min-width: 96px;
   padding: 6px;
-  min-width: 98px;
-  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  z-index: 10;
 }
 
 .dropdown-item {
-  display: flex;
-  align-items: center;
-  padding: 7px 10px;
-  border-radius: 6px;
-  font-size: 10px;
-  color: #e2e2e2;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  padding: 8px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
 .dropdown-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
+  background: var(--surface-2);
 }
 
 .dropdown-item.danger {
-  color: #ff4d4f;
+  color: var(--danger);
 }
 
-.dropdown-item.danger:hover {
-  background: rgba(255, 77, 79, 0.1);
-  color: #ff4d4f;
-}
-
-.merchant-card:hover .more-btn {
-  opacity: 1;
-}
-
-.more-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text);
-}
-
-/* 商家Logo和名称一行 */
 .merchant-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-  margin-top: 28px;
-}
-
-.merchant-logo {
-  background: rgba(255, 255, 255, 0.08);
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px !important;
-  flex-shrink: 0;
+  gap: 12px;
+  margin-top: 30px;
+  margin-bottom: 20px;
 }
 
 .merchant-info {
-  flex: 1;
   min-width: 0;
 }
 
 .merchant-name {
-  font-family: 'Manrope', sans-serif;
-  font-weight: 700;
-  font-size: 13px;
+  margin: 0 0 4px;
   color: var(--text);
-  letter-spacing: 0;
-  line-height: 1.3;
-  margin-bottom: 3px;
+  font-size: 16px;
+  font-weight: 800;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .merchant-expiry {
-  font-family: 'Inter', sans-serif;
-  font-size: 8px;
+  margin: 0;
   color: var(--text-3);
-  line-height: 1.5;
+  font-size: 12px;
 }
 
-/* 额度区域 */
 .quota-section {
-  margin-bottom: 14px;
-  padding: 11px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 11px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
 }
 
 .quota-header {
   display: flex;
   justify-content: space-between;
+  gap: 10px;
   align-items: center;
-  margin-bottom: 8px;
 }
 
 .quota-left {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .quota-label {
-  font-family: 'Inter', sans-serif;
-  font-size: 8px;
   color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 12px;
 }
 
 .quota-value {
-  font-family: 'Manrope', sans-serif;
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--accent);
+  color: var(--text);
+  font-weight: 800;
 }
 
 .recharge-btn {
-  background: rgba(0, 122, 255, 0.15) !important;
-  border: 1px solid rgba(0, 122, 255, 0.3) !important;
-  border-radius: 6px !important;
-  color: #007AFF !important;
-  font-size: 8px !important;
-  padding: 4px 8px !important;
+  border-radius: 999px;
 }
 
 .quota-bar {
-  height: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
+  height: 6px;
+  margin-top: 12px;
+  background: var(--surface-3);
+  border-radius: 999px;
   overflow: hidden;
 }
 
 .quota-progress {
   height: 100%;
-  background: linear-gradient(90deg, #007AFF, #0055cc);
-  border-radius: 3px;
-  transition: width 0.5s ease;
+  background: linear-gradient(90deg, #007aff, #00c2ff);
 }
 
-/* 存储区域 - 10px Label 层级 */
-/* 空状态 */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 40px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 24px;
+html.dark-theme .merchant-card {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-sm);
+}
+
+html.dark-theme .merchant-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-md);
+}
+
+html.dark-theme .more-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: transparent;
+}
+
+html.dark-theme .quota-section {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: transparent;
+}
+
+html.dark-theme .quota-bar {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.empty-state,
+.loading-state {
   text-align: center;
-}
-
-.empty-icon {
-  margin-bottom: 24px;
-  color: rgba(255, 255, 255, 0.1);
+  padding: 72px 20px;
+  color: var(--text-3);
 }
 
 .empty-title {
-  font-family: 'Manrope', sans-serif;
-  font-weight: 700;
-  font-size: 24px;
   color: var(--text);
-  margin-bottom: 12px;
 }
 
-.empty-desc {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  color: var(--text-3);
-  margin-bottom: 32px;
-}
-
-/* 加载状态 */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #007AFF;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 16px;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.loading-text {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  color: var(--text-3);
-}
-
-/* 分页 - 10px Label 层级 */
 .pagination-wrap {
   display: flex;
   justify-content: center;
-  margin-top: 40px;
+  margin-top: 24px;
 }
 
-.custom-pagination {
-  display: flex;
-  gap: 8px;
-}
-
-.custom-pagination :deep(.el-pager li) {
-  min-width: 40px;
-  height: 40px;
-  line-height: 40px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  color: var(--text-3);
-  transition: all 0.3s ease;
-}
-
-.custom-pagination :deep(.el-pager li:hover) {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text);
-}
-
-.custom-pagination :deep(.el-pager li.is-active) {
-  background: #007AFF;
-  border-color: #007AFF;
-  color: var(--text);
-}
-
-.custom-pagination :deep(.btn-prev),
-.custom-pagination :deep(.btn-next) {
-  min-width: 40px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  color: var(--text-3);
-}
-
-/* 下拉菜单 */
-.action-menu {
-  background: #1f1f1f !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 16px !important;
-  padding: 8px !important;
-}
-
-.action-menu :deep(.el-dropdown-menu__item) {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px !important;
-  border-radius: 10px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  color: #e2e2e2;
-  transition: all 0.2s ease;
-}
-
-.action-menu :deep(.el-dropdown-menu__item:hover) {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #ffffff !important;
-}
-
-/* 创建弹窗 */
-.create-dialog :deep(.el-dialog) {
-  background: #1f1f1f !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 24px !important;
-  backdrop-filter: blur(64px) !important;
-}
-
-.create-dialog :deep(.el-dialog__header) {
-  padding: 28px 32px !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-}
-
-.create-dialog :deep(.el-dialog__title) {
-  font-family: 'Manrope', sans-serif !important;
-  font-weight: 700 !important;
-  font-size: 22px !important;
-  color: #ffffff !important;
-}
-
-.create-dialog :deep(.el-dialog__body) {
-  padding: 32px !important;
-}
-
-.create-dialog :deep(.el-dialog__footer) {
-  padding: 24px 32px !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-}
-
-.create-form :deep(.el-form-item__label) {
-  font-family: 'Inter', sans-serif !important;
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.1em !important;
-  color: #919191 !important;
-  margin-bottom: 10px !important;
-}
-
-.form-select {
-  width: 100%;
-}
-
-/* 弹窗按钮 */
-.cancel-btn {
-  padding: 12px 28px !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 12px !important;
-  font-family: 'Manrope', sans-serif !important;
-  font-weight: 600 !important;
-  font-size: 14px !important;
-  color: #e2e2e2 !important;
-  transition: all 0.3s ease !important;
-}
-
-.cancel-btn:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
-  color: #ffffff !important;
-}
-
-.confirm-btn {
-  padding: 12px 28px !important;
-  background: linear-gradient(135deg, #007AFF, #0055cc) !important;
-  border: none !important;
-  border-radius: 12px !important;
-  font-family: 'Manrope', sans-serif !important;
-  font-weight: 700 !important;
-  font-size: 14px !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 16px -4px rgba(0, 122, 255, 0.4) !important;
-  transition: all 0.3s ease !important;
-}
-
-.confirm-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px -4px rgba(0, 122, 255, 0.5) !important;
-}
-
-.delete-btn {
-  padding: 12px 28px !important;
-  background: linear-gradient(135deg, #ff4d4f, #cf1322) !important;
-  border: none !important;
-  border-radius: 12px !important;
-  font-family: 'Manrope', sans-serif !important;
-  font-weight: 700 !important;
-  font-size: 14px !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 16px -4px rgba(255, 77, 79, 0.4) !important;
-  transition: all 0.3s ease !important;
-}
-
-/* 删除弹窗内容 */
-.delete-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.dialog-content {
   text-align: center;
-  padding: 20px 0;
+  padding: 12px 0;
+}
+
+.dialog-title {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.dialog-hint {
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.quota-input {
+  margin-top: 12px;
 }
 
 .delete-icon {
-  width: 72px;
-  height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 77, 79, 0.1);
-  border: 1px solid rgba(255, 77, 79, 0.2);
-  border-radius: 20px;
-  color: #ff4d4f;
-  margin-bottom: 20px;
+  color: var(--danger);
 }
 
-.delete-text {
-  font-family: 'Manrope', sans-serif;
-  font-weight: 600;
-  font-size: 18px;
-  color: var(--text);
-  margin-bottom: 8px;
-}
+@media (max-width: 720px) {
+  .action-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
 
-.delete-hint {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  color: var(--text-3);
-}
-
-/* 删除弹窗 */
-.delete-dialog :deep(.el-dialog) {
-  background: #1f1f1f !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 24px !important;
-}
-
-.delete-dialog :deep(.el-dialog__header) {
-  padding: 24px 32px !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-}
-
-.delete-dialog :deep(.el-dialog__title) {
-  font-family: 'Manrope', sans-serif !important;
-  font-weight: 700 !important;
-  font-size: 20px !important;
-  color: #ffffff !important;
-}
-
-.delete-dialog :deep(.el-dialog__body) {
-  padding: 32px !important;
-}
-
-.delete-dialog :deep(.el-dialog__footer) {
-  padding: 20px 32px !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  .action-right {
+    justify-content: space-between;
+  }
 }
 </style>

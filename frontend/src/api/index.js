@@ -44,6 +44,7 @@ export default request
 export const auth = {
   loginByPassword: (data) => request.post('/auth/login/password', data),
   loginBySms: (data) => request.post('/auth/login/sms', data),
+  register: (data) => request.post('/auth/register', data),
   sendSms: (data) => request.post('/auth/sms/send', data),
   refresh: (data) => request.post('/auth/refresh', data),
   logout: () => request.post('/auth/logout')
@@ -76,6 +77,7 @@ export const warehouse = {
 export const quota = {
   allocate: (id, data) => request.post(`/merchants/${id}/quota/allocate`, data),
   logs: (params) => request.get('/quota/logs', { params }),
+  tenantBalance: () => request.get('/quota/balance'),
   // 额度查询（外部API）- API返回20000000对应40元，换算比例500000
   balance: () => {
     const apiKey = localStorage.getItem('apiKey') || 'sk-MtssNtmuPIELmwWO5wY8bK3TOfGGofGjmOwmxCQEOXqZCVN1'
@@ -95,7 +97,17 @@ export const quota = {
 
 export const generator = {
   content: (data) => request.post('/generate/content', data),
+  reviewPreview: (data) => request.post('/generate/review-preview', data),
   feedback: (id, data) => request.post(`/generations/${id}/feedback`, data)
+}
+
+export const factory = {
+  modules: () => request.get('/factory/modules'),
+  generate: (data) => request.post('/factory/generations', data),
+  detail: (id) => request.get(`/factory/generations/${id}`),
+  history: (params) => request.get('/factory/history', { params }),
+  drafts: (params) => request.get('/drafts', { params }),
+  deleteDraft: (id) => request.delete(`/drafts/${id}`)
 }
 
 export const h5 = {

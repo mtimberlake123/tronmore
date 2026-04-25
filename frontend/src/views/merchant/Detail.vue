@@ -1,7 +1,7 @@
 <template>
   <div class="merchant-detail">
     <!-- 返回 -->
-    <el-button text @click="router.push('/merchants')" class="mb-6 text-on-surface-variant hover:text-white transition-colors">
+    <el-button text @click="router.push('/merchants')" class="back-to-list mb-6">
       <ArrowLeft class="w-4 h-4 mr-2" /> 返回商家列表
     </el-button>
 
@@ -9,7 +9,12 @@
     <div class="detail-grid">
       <!-- 左侧：商家信息 (280px) -->
       <div class="side-content">
-        <MerchantInfo :merchant="merchantInfo" :active-module="activeModule" @module-click="handleModuleClick" />
+        <MerchantInfo
+          :merchant="merchantInfo"
+          :active-module="activeModule"
+          @module-click="handleModuleClick"
+          @recharge="openRechargeDialog"
+        />
       </div>
 
       <!-- 右侧：主内容区 (3/4) -->
@@ -207,6 +212,66 @@
           </template>
 
           <!-- 贴纸生成 -->
+          <template v-if="activeModule === 'review-generator'">
+            <div class="review-generator-panel">
+              <div class="review-hero">
+                <div>
+                  <p class="eyebrow">AI 点评验证</p>
+                  <h2>验证当前商家配置的点评生成效果</h2>
+                  <p>这里会真实调用 AI，但使用预览接口，不扣商家额度，也不写入正式生成记录。</p>
+                </div>
+                <el-button type="primary" class="btn-primary" :loading="reviewGenerating" @click="generateReviewPreview">
+                  {{ reviewGenerating ? '生成中...' : '生成点评' }}
+                </el-button>
+              </div>
+
+              <div class="review-context-grid">
+                <div class="context-card">
+                  <span class="context-label">商家名</span>
+                  <strong>{{ merchantForm.name || '未填写' }}</strong>
+                </div>
+                <div class="context-card">
+                  <span class="context-label">商家产品</span>
+                  <p>{{ productList.join('、') || '未填写' }}</p>
+                </div>
+                <div class="context-card">
+                  <span class="context-label">特色宣传点</span>
+                  <p>{{ featureList.join('、') || '未填写' }}</p>
+                </div>
+                <div class="context-card">
+                  <span class="context-label">评价预设要求</span>
+                  <p>{{ merchantForm.aiPromptExt || '未填写' }}</p>
+                </div>
+              </div>
+
+              <div class="review-extra">
+                <label>本次验证补充要求</label>
+                <el-input
+                  v-model="reviewPreviewForm.extraRequirements"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="可选，例如：语气更像真实顾客，重点突出服务和环境。"
+                  class="input-dark"
+                />
+              </div>
+
+              <div class="review-result" v-if="reviewPreviewResult || reviewPreviewTraceId">
+                <div class="result-head">
+                  <div>
+                    <span class="context-label">生成结果</span>
+                    <p v-if="reviewPreviewTraceId">追踪编号：{{ reviewPreviewTraceId }}</p>
+                  </div>
+                  <el-button class="btn-tertiary" :disabled="!reviewPreviewResult" @click="copyReviewPreview">
+                    复制点评
+                  </el-button>
+                </div>
+                <div class="result-content">
+                  {{ reviewPreviewResult || '暂无内容' }}
+                </div>
+              </div>
+            </div>
+          </template>
+
           <template v-if="activeModule === 'generator'">
             <QrStickerGenerator
               :merchant-id="route.params.id"
@@ -217,6 +282,17 @@
         </div>
       </div>
     </div>
+
+    <el-dialog v-model="showRechargeDialog" title="分配门店额度" width="420px" class="dialog-dark">
+      <div class="recharge-dialog-body">
+        <p>额度会从当前营销公司的未分配额度中扣除，并增加到该门店。</p>
+        <el-input-number v-model="rechargeAmount" :min="1" :max="10000" :step="1" controls-position="right" />
+      </div>
+      <template #footer>
+        <el-button @click="showRechargeDialog = false">取消</el-button>
+        <el-button type="primary" :loading="rechargeLoading" @click="handleRecharge">确认分配</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 图片数量设置 -->
     <el-dialog v-model="showSettings" title="图片数量设置" width="400px" class="dialog-dark">
@@ -245,7 +321,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { merchant, warehouse, reference } from '@/api'
+import { merchant, warehouse, reference, generator, quota } from '@/api'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Upload, Delete } from '@element-plus/icons-vue'
 import ImageUploader from '@/components/ImageUploader.vue'
@@ -262,7 +338,7 @@ const activeModule = ref('dashboard')
 const merchantInfo = computed(() => ({
   name: merchantForm.name,
   logo: merchantForm.logo,
-  balance: merchantForm.reviewImageCount
+  balance: merchantForm.balance
 }))
 
 const handleModuleClick = (key) => {
@@ -270,6 +346,46 @@ const handleModuleClick = (key) => {
   if (key === 'reference') {
     fetchNoteTemplates()
     fetchReviewTemplates()
+  }
+}
+
+const generateReviewPreview = async () => {
+  if (!merchantForm.name) {
+    ElMessage.warning('请先完善商家名称')
+    return
+  }
+
+  reviewGenerating.value = true
+  reviewPreviewResult.value = ''
+  reviewPreviewTraceId.value = ''
+
+  try {
+    const res = await generator.reviewPreview({
+      merchant_id: route.params.id,
+      options: {
+        preset_requirements: merchantForm.aiPromptExt,
+        extraRequirements: reviewPreviewForm.extraRequirements
+      }
+    })
+    reviewPreviewResult.value = res?.content?.text || ''
+    reviewPreviewTraceId.value = res?.trace_id || ''
+    ElMessage.success('点评生成成功')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('点评生成失败')
+  } finally {
+    reviewGenerating.value = false
+  }
+}
+
+const copyReviewPreview = async () => {
+  if (!reviewPreviewResult.value) return
+  try {
+    await navigator.clipboard.writeText(reviewPreviewResult.value)
+    ElMessage.success('已复制点评')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('复制失败，请手动复制')
   }
 }
 const industries = [
@@ -292,6 +408,7 @@ const merchantForm = reactive({
   dy_url: '',
   wx_url: '',
   address: '',
+  balance: 0,
   reviewImageCount: 9,
   noteImageCount: 9,
   productImageCount: 9
@@ -309,6 +426,11 @@ const storeTypes = ['通用', '门面', '室内', '室外']
 const productList = computed(() => {
   const text = merchantForm.productsText || ''
   return text.split(',').map(p => p.trim()).filter(Boolean)
+})
+
+const featureList = computed(() => {
+  const text = merchantForm.featuresText || ''
+  return text.split(',').map(item => item.trim()).filter(Boolean)
 })
 
 const getProductImages = (product) => {
@@ -341,6 +463,37 @@ const showNoteTemplateDialog = ref(false)
 const showReviewTemplateDialog = ref(false)
 const noteTemplateForm = reactive({ content: '' })
 const reviewTemplateForm = reactive({ content: '' })
+const reviewGenerating = ref(false)
+const reviewPreviewResult = ref('')
+const reviewPreviewTraceId = ref('')
+const reviewPreviewForm = reactive({ extraRequirements: '' })
+const showRechargeDialog = ref(false)
+const rechargeAmount = ref(10)
+const rechargeLoading = ref(false)
+
+const openRechargeDialog = () => {
+  rechargeAmount.value = 10
+  showRechargeDialog.value = true
+}
+
+const handleRecharge = async () => {
+  if (!rechargeAmount.value || rechargeAmount.value <= 0) {
+    ElMessage.warning('请输入正确的分配额度')
+    return
+  }
+
+  rechargeLoading.value = true
+  try {
+    await quota.allocate(route.params.id, { amount: rechargeAmount.value })
+    ElMessage.success('门店额度分配成功')
+    showRechargeDialog.value = false
+    await fetchDetail()
+  } catch (e) {
+    console.error(e)
+  } finally {
+    rechargeLoading.value = false
+  }
+}
 
 const maxGeneration = computed(() => {
   return Math.max(...dashboardData.daily_trend.map(t => t.generation), 1)
@@ -361,6 +514,7 @@ const fetchDetail = async () => {
       dy_url: res.dy_url || '',
       wx_url: res.wx_url || '',
       address: res.address || '',
+      balance: res.balance ?? 0,
       reviewImageCount: res.review_image_count ?? 9,
       noteImageCount: res.note_image_count ?? 9,
       productImageCount: res.product_image_count ?? 9
@@ -558,6 +712,16 @@ onMounted(() => {
   animation: fadeIn 0.3s ease-out;
 }
 
+.back-to-list {
+  color: var(--text-2) !important;
+  font-weight: 600;
+}
+
+.back-to-list:hover {
+  color: var(--accent) !important;
+  background: var(--accent-dim) !important;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -600,6 +764,12 @@ onMounted(() => {
 
 .reference-tabs {
   margin-bottom: 16px;
+}
+
+.recharge-dialog-body p {
+  color: var(--text-2);
+  line-height: 1.7;
+  margin: 0 0 16px;
 }
 
 .template-section {
@@ -727,5 +897,111 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.review-generator-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.review-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+}
+
+.review-hero h2 {
+  margin: 4px 0 8px;
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.review-hero p {
+  margin: 0;
+  color: var(--text-2);
+  line-height: 1.7;
+}
+
+.eyebrow,
+.context-label {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.review-context-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.context-card,
+.review-extra,
+.review-result {
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+.context-card strong,
+.context-card p {
+  display: block;
+  margin: 8px 0 0;
+  color: var(--text);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.review-extra label {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.result-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.result-head p {
+  margin: 6px 0 0;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.result-content {
+  padding: 18px;
+  min-height: 160px;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 14px;
+  color: var(--text);
+  line-height: 1.9;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 768px) {
+  .review-hero,
+  .result-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .review-context-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

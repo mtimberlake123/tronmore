@@ -8,7 +8,7 @@ export class Poster {
   @Column({ name: 'poster_id', unique: true })
   posterId: string;
 
-  @Column({ name: 'template_id' })
+  @Column({ name: 'template_id', nullable: true })
   templateId: number;
 
   @Column({ name: 'merchant_id' })
@@ -17,7 +17,7 @@ export class Poster {
   @Column({ name: 'tenant_id' })
   tenantId: string;
 
-  @Column({ name: 'image_url' })
+  @Column({ name: 'image_url', nullable: true, type: 'text' })
   imageUrl: string;
 
   @Column({ type: 'json' })

@@ -44,20 +44,23 @@ export class AdminService {
 
     const [list, total] = await query.getManyAndCount();
 
-    // Query merchant counts per tenant
+    // Query merchant counts and remaining merchant quota per tenant.
     const tenantIds = list.map(t => t.tenantId);
     let countMap: Record<string, number> = {};
+    let merchantBalanceMap: Record<string, number> = {};
     if (tenantIds.length > 0) {
       const merchantCounts = await this.merchantRepository
         .createQueryBuilder('m')
         .select('m.tenantId', 'tenantId')
         .addSelect('COUNT(*)', 'count')
+        .addSelect('COALESCE(SUM(m.balance), 0)', 'merchantBalance')
         .where('m.tenantId IN (:...tenantIds)', { tenantIds })
         .groupBy('m.tenantId')
         .getRawMany();
 
       merchantCounts.forEach(mc => {
         countMap[mc.tenantId] = parseInt(mc.count);
+        merchantBalanceMap[mc.tenantId] = Number(mc.merchantBalance || 0);
       });
     }
 
@@ -67,8 +70,13 @@ export class AdminService {
         name: t.name,
         phone: t.phone,
         balance: t.balance,
+        company_balance: t.balance,
+        merchant_balance: merchantBalanceMap[t.tenantId] || 0,
+        total_remaining: t.balance + (merchantBalanceMap[t.tenantId] || 0),
         total_quota: t.totalQuota,
         used_quota: t.usedQuota,
+        allocated_quota: t.usedQuota,
+        unallocated_quota: t.balance,
         status: t.status,
         created_at: t.createdAt,
         merchants: countMap[t.tenantId] || 0,
@@ -119,7 +127,12 @@ export class AdminService {
     package?: string;
     package_name?: string;
   }) {
-    const tenant = await this.tenantRepository.findOne({ where: { tenantId: companyId } });
+    const tenant = await this.tenantRepository.findOne({
+      where: [
+        { tenantId: companyId },
+        ...(Number.isInteger(Number(companyId)) ? [{ id: Number(companyId) }] : []),
+      ],
+    });
     if (!tenant) {
       throw new NotFoundException('营销公司不存在');
     }
@@ -134,7 +147,7 @@ export class AdminService {
     await this.tenantRepository.save(tenant);
 
     return {
-      company_id: companyId,
+      company_id: tenant.tenantId,
       before,
       after: tenant.balance,
       amount: data.amount,
