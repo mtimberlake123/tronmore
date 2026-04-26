@@ -6,8 +6,7 @@ import { Readable } from 'stream';
 export class AiService {
   private readonly baseURL = process.env.AI_BASE_URL || 'https://api.chatfire.site/v1';
   private readonly model = process.env.AI_MODEL || 'gpt-5.4';
-  private readonly appKey =
-    process.env.AI_API_KEY || 'sk-MtssNtmuPIELmwWO5wY8bK3TOfGGofGjmOwmxCQEOXqZCVN1';
+  private readonly appKey = process.env.AI_API_KEY || '';
   private readonly temperature = Number(process.env.AI_TEMPERATURE || 0.7);
 
   async generate(prompt: string, maxTokens: number = 1000): Promise<string> {
@@ -94,8 +93,56 @@ export class AiService {
   }
 
   async *generateStream(prompt: string, maxTokens: number = 1000): AsyncGenerator<string> {
-    const text = await this.generate(prompt, maxTokens);
-    yield text;
+    if (!this.appKey) {
+      throw new Error('AI_API_KEY 未配置');
+    }
+
+    const response = await axios.post(
+      `${this.baseURL}/chat/completions`,
+      {
+        model: this.model,
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        stream: true,
+        temperature: this.temperature,
+        max_tokens: maxTokens,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.appKey}`,
+          'Content-Type': 'application/json',
+        },
+        responseType: 'stream',
+        timeout: 60000,
+      },
+    );
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    for await (const chunk of response.data as Readable) {
+      buffer += decoder.decode(chunk as Buffer, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const content = this.parseStreamLine(line);
+        if (content) {
+          yield content;
+        }
+      }
+    }
+
+    if (buffer.trim()) {
+      const content = this.parseStreamLine(buffer);
+      if (content) {
+        yield content;
+      }
+    }
   }
 
   private readStreamContent(stream: Readable): Promise<string> {

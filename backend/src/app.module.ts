@@ -13,6 +13,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { H5Module } from './modules/h5/h5.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AiModule } from './modules/ai/ai.module';
+import { MarketingVideoModule } from './modules/marketing-video/marketing-video.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AiModule } from './modules/ai/ai.module';
     AdminModule,
     H5Module,
     AnalyticsModule,
+    MarketingVideoModule,
   ],
 })
 export class AppModule {}

@@ -17,6 +17,19 @@ export declare class GeneratorController {
             duration: number;
         };
     }>;
+    previewReview(req: any, body: {
+        merchant_id: string;
+        options?: any;
+    }): Promise<{
+        code: number;
+        data: {
+            trace_id: string;
+            content: {
+                text: string;
+            };
+            duration: number;
+        };
+    }>;
     getGenerations(req: any, query: any): Promise<{
         code: number;
         data: {

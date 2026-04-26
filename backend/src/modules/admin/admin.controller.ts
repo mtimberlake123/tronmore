@@ -250,4 +250,82 @@ export class AdminController {
       ...(await this.adminService.transferMerchant(id, body.targetTenantId)),
     };
   }
+
+  @Get('ai-agents')
+  async getAiAgents(@Query() query: { step_key?: string }) {
+    return {
+      code: 200,
+      data: await this.adminService.getAiAgents(query),
+    };
+  }
+
+  @Post('ai-agents')
+  async createAiAgent(@Body() body: {
+    name: string;
+    step_key: string;
+    model?: string;
+    temperature?: number;
+    max_iterations?: number;
+    system_prompt: string;
+  }) {
+    return {
+      code: 200,
+      data: await this.adminService.createAiAgent(body),
+    };
+  }
+
+  @Put('ai-agents/:id')
+  async updateAiAgent(
+    @Param('id') id: string,
+    @Body() body: {
+      name?: string;
+      step_key?: string;
+      model?: string;
+      temperature?: number;
+      max_iterations?: number;
+      system_prompt?: string;
+      is_active?: boolean;
+    },
+  ) {
+    return {
+      code: 200,
+      data: await this.adminService.updateAiAgent(id, body),
+    };
+  }
+
+  @Get('ai-skills')
+  async getAiSkills(@Query() query: { agent_type?: string }) {
+    return {
+      code: 200,
+      data: await this.adminService.getAiSkills(query),
+    };
+  }
+
+  @Post('ai-skills')
+  async createAiSkill(@Body() body: {
+    name: string;
+    agent_type: string;
+    content: string;
+  }) {
+    return {
+      code: 200,
+      data: await this.adminService.createAiSkill(body),
+    };
+  }
+
+  @Put('ai-skills/:id')
+  async updateAiSkill(
+    @Param('id') id: string,
+    @Body() body: {
+      name?: string;
+      agent_type?: string;
+      content?: string;
+      is_active?: boolean;
+    },
+  ) {
+    return {
+      code: 200,
+      data: await this.adminService.updateAiSkill(id, body),
+    };
+  }
 }

@@ -67,6 +67,11 @@ const routes = [
         path: 'sensitive',
         name: 'AdminSensitive',
         component: () => import('@/views/admin/RiskRules.vue')
+      },
+      {
+        path: 'ai-workflow',
+        name: 'AdminAiWorkflow',
+        component: () => import('@/views/admin/AiWorkflow.vue')
       }
     ]
   },
@@ -75,6 +80,12 @@ const routes = [
     path: '/h5/:merchantId',
     name: 'H5Landing',
     component: () => import('@/views/h5/LandingPage.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/h5/:merchantId/note',
+    name: 'H5NoteGenerate',
+    component: () => import('@/views/h5/NoteGenerate.vue'),
     meta: { requiresAuth: false }
   }
 ]

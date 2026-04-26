@@ -3,12 +3,16 @@ import { Tenant } from '../auth/tenant.entity';
 import { Merchant } from '../merchant/merchant.entity';
 import { PromptTemplate } from './prompt-template.entity';
 import { SensitiveWord } from './sensitive-word.entity';
+import { AiAgentConfig } from './ai-agent-config.entity';
+import { AiSkill } from './ai-skill.entity';
 export declare class AdminService {
     private tenantRepository;
     private merchantRepository;
     private promptRepository;
     private sensitiveRepository;
-    constructor(tenantRepository: Repository<Tenant>, merchantRepository: Repository<Merchant>, promptRepository: Repository<PromptTemplate>, sensitiveRepository: Repository<SensitiveWord>);
+    private agentConfigRepository;
+    private skillRepository;
+    constructor(tenantRepository: Repository<Tenant>, merchantRepository: Repository<Merchant>, promptRepository: Repository<PromptTemplate>, sensitiveRepository: Repository<SensitiveWord>, agentConfigRepository: Repository<AiAgentConfig>, skillRepository: Repository<AiSkill>);
     getCompanies(params: {
         page?: number;
         page_size?: number;
@@ -19,8 +23,13 @@ export declare class AdminService {
             name: string;
             phone: string;
             balance: number;
+            company_balance: number;
+            merchant_balance: number;
+            total_remaining: number;
             total_quota: number;
             used_quota: number;
+            allocated_quota: number;
+            unallocated_quota: number;
             status: number;
             created_at: Date;
             merchants: number;
@@ -169,5 +178,72 @@ export declare class AdminService {
         merchant_id: string;
         from_tenant: string;
         to_tenant: string;
+    }>;
+    getAiAgents(params: {
+        step_key?: string;
+    }): Promise<{
+        list: {
+            id: string;
+            name: string;
+            step_key: string;
+            model: string;
+            temperature: number;
+            max_iterations: number;
+            system_prompt: string;
+            is_active: boolean;
+            created_at: Date;
+        }[];
+        total: number;
+    }>;
+    createAiAgent(data: {
+        name: string;
+        step_key: string;
+        model?: string;
+        temperature?: number;
+        max_iterations?: number;
+        system_prompt: string;
+    }): Promise<{
+        id: string;
+    }>;
+    updateAiAgent(agentId: string, data: {
+        name?: string;
+        step_key?: string;
+        model?: string;
+        temperature?: number;
+        max_iterations?: number;
+        system_prompt?: string;
+        is_active?: boolean;
+    }): Promise<{
+        id: string;
+    }>;
+    getAiSkills(params: {
+        agent_type?: string;
+    }): Promise<{
+        list: {
+            id: string;
+            name: string;
+            agent_type: string;
+            content: string;
+            version: number;
+            is_active: boolean;
+            created_at: Date;
+        }[];
+        total: number;
+    }>;
+    createAiSkill(data: {
+        name: string;
+        agent_type: string;
+        content: string;
+    }): Promise<{
+        id: string;
+    }>;
+    updateAiSkill(skillId: string, data: {
+        name?: string;
+        agent_type?: string;
+        content?: string;
+        is_active?: boolean;
+    }): Promise<{
+        id: string;
+        version: number;
     }>;
 }

@@ -22,7 +22,7 @@ let AuthController = class AuthController {
     }
     async loginByPassword(body) {
         if (!body.agree_terms) {
-            throw new Error('请同意用户协议');
+            throw new common_1.BadRequestException('请先同意用户协议');
         }
         return {
             code: 200,
@@ -31,11 +31,20 @@ let AuthController = class AuthController {
     }
     async loginBySms(body) {
         if (!body.agree_terms) {
-            throw new Error('请同意用户协议');
+            throw new common_1.BadRequestException('请先同意用户协议');
         }
         return {
             code: 200,
             data: await this.authService.loginBySms(body.phone, body.code, true),
+        };
+    }
+    async register(body) {
+        if (!body.agree_terms) {
+            throw new common_1.BadRequestException('请先同意用户协议');
+        }
+        return {
+            code: 200,
+            data: await this.authService.register(body),
         };
     }
     async sendSms(body) {
@@ -51,7 +60,7 @@ let AuthController = class AuthController {
     async logout() {
         return {
             code: 200,
-            message: '登出成功',
+            message: '退出成功',
         };
     }
 };
@@ -70,6 +79,13 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "loginBySms", null);
+__decorate([
+    (0, common_1.Post)('register'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "register", null);
 __decorate([
     (0, common_1.Post)('sms/send'),
     __param(0, (0, common_1.Body)()),

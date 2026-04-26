@@ -3,8 +3,8 @@
     <section class="workspace">
       <aside class="scene-panel panel-card">
         <div class="panel-title">
-          <h2>制作场景</h2>
-          <p>选择本次内容的使用场景</p>
+          <h2>物料设计</h2>
+          <p>选择本次物料的使用场景</p>
         </div>
 
         <button
@@ -44,7 +44,7 @@
           <el-form-item label="图片比例">
             <div class="pill-group">
               <button
-                v-for="item in ratioOptions"
+                v-for="item in availableRatioOptions"
                 :key="item.value"
                 type="button"
                 :class="['pill', { active: form.ratio === item.value }]"
@@ -210,9 +210,17 @@ const form = reactive({
 
 const activeModule = computed(() => modules.value.find(item => item.key === form.module_key))
 const moduleKeys = computed(() => modules.value.map(item => item.key))
+const availableRatioOptions = computed(() => {
+  const supportedRatios = activeModule.value?.supportedRatios
+  if (!Array.isArray(supportedRatios) || !supportedRatios.length) return ratioOptions
+  return ratioOptions.filter(item => supportedRatios.includes(item.value))
+})
 
 const selectModule = (item) => {
   form.module_key = item.key
+  if (Array.isArray(item.supportedRatios) && item.supportedRatios.length && !item.supportedRatios.includes(form.ratio)) {
+    form.ratio = item.supportedRatios[0]
+  }
 }
 
 const normalizeModuleKey = (key) => {
@@ -336,6 +344,8 @@ const stopPolling = () => {
 const fetchModules = async () => {
   modules.value = await factory.modules()
   form.module_key = normalizeModuleKey(form.module_key)
+  const currentModule = modules.value.find(item => item.key === form.module_key)
+  if (currentModule) selectModule(currentModule)
 }
 
 const fetchMerchants = async () => {
@@ -353,7 +363,12 @@ const fetchHistory = async () => {
 
 const useHistory = (item) => {
   form.module_key = normalizeModuleKey(item.module_key || form.module_key)
-  form.ratio = item.ratio || form.ratio
+  const currentModule = modules.value.find(moduleItem => moduleItem.key === form.module_key)
+  if (currentModule) selectModule(currentModule)
+  const nextRatio = item.ratio || form.ratio
+  if (!currentModule?.supportedRatios || currentModule.supportedRatios.includes(nextRatio)) {
+    form.ratio = nextRatio
+  }
   form.style = item.style || form.style
   form.copywriting = item.prompt || ''
   form.other_requirements = ''

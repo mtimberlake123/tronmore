@@ -20,32 +20,39 @@ const uuid_1 = require("uuid");
 const merchant_entity_1 = require("../merchant/merchant.entity");
 const generation_entity_1 = require("../generator/generation.entity");
 const analytics_log_entity_1 = require("../analytics/analytics-log.entity");
-const sensitive_word_entity_1 = require("../admin/sensitive-word.entity");
 const ai_service_1 = require("../ai/ai.service");
+const prompt_builder_service_1 = require("../prompt-builder/prompt-builder.service");
+const merchant_image_entity_1 = require("../warehouse/merchant-image.entity");
 let H5Service = class H5Service {
-    constructor(merchantRepository, generationRepository, analyticsRepository, sensitiveWordRepository, aiService) {
+    constructor(merchantRepository, generationRepository, analyticsRepository, imageRepository, aiService, promptBuilder) {
         this.merchantRepository = merchantRepository;
         this.generationRepository = generationRepository;
         this.analyticsRepository = analyticsRepository;
-        this.sensitiveWordRepository = sensitiveWordRepository;
+        this.imageRepository = imageRepository;
         this.aiService = aiService;
+        this.promptBuilder = promptBuilder;
     }
     async getMerchantConfig(merchantId) {
         const merchant = await this.merchantRepository.findOne({ where: { merchantId } });
         if (!merchant) {
             throw new common_1.BadRequestException('商家不存在');
         }
+        const coverImage = await this.findCoverImage(merchant.merchantId);
+        const productImages = await this.findProductImages(merchant.merchantId, 6);
         return {
             merchant_id: merchant.merchantId,
             name: merchant.name,
             logo: merchant.logo,
+            cover_image: coverImage || merchant.logo || '',
+            product_images: productImages,
             incentive: merchant.incentive,
             jump_targets: merchant.jumpLinks?.platforms || ['dianping'],
-            dy_url: merchant.jumpLinks?.dy_url || '',
-            wx_qr: merchant.jumpLinks?.wx_qr || '',
+            dy_url: merchant.location?.dy_url || merchant.jumpLinks?.dy_url || '',
+            wx_qr: merchant.location?.wx_url || merchant.jumpLinks?.wx_qr || '',
+            address: merchant.location?.address || '',
         };
     }
-    async generateContent(merchantId, type) {
+    async generateContent(merchantId, type, options = {}) {
         const traceId = (0, uuid_1.v4)();
         const startTime = Date.now();
         const merchant = await this.merchantRepository.findOne({ where: { merchantId } });
@@ -55,19 +62,19 @@ let H5Service = class H5Service {
         if (merchant.balance <= 0) {
             throw new common_1.BadRequestException('该商家额度已用完', '4001');
         }
-        const prompt = await this.buildPrompt(merchant, type);
+        const prompt = await this.promptBuilder.buildMerchantPrompt(merchant, type, options);
         let content;
         try {
-            content = await this.callAI(prompt, type);
+            content = await this.aiService.generate(prompt, type === 'note' ? 260 : 520);
         }
         catch (error) {
             console.error('AI生成失败:', error);
             throw new common_1.BadRequestException('AI服务异常', '4002');
         }
-        if (await this.containsSensitiveWords(content)) {
+        if (await this.promptBuilder.containsSensitiveWords(content)) {
             throw new common_1.BadRequestException('内容优化中，请重试', '4003');
         }
-        const images = this.mockImages(6);
+        const images = await this.matchImages(merchantId, type, 6);
         merchant.balance -= 1;
         await this.merchantRepository.save(merchant);
         const generation = this.generationRepository.create({
@@ -88,14 +95,76 @@ let H5Service = class H5Service {
                 type,
             });
         }
-        catch (e) {
-            console.error('埋点记录失败:', e);
+        catch (error) {
+            console.error('埋点记录失败:', error);
         }
         return {
             trace_id: traceId,
             content: {
                 text: content,
                 images,
+            },
+        };
+    }
+    async *generateContentStream(merchantId, type, options = {}) {
+        const traceId = (0, uuid_1.v4)();
+        const startTime = Date.now();
+        const merchant = await this.merchantRepository.findOne({ where: { merchantId } });
+        if (!merchant) {
+            throw new common_1.BadRequestException('商家不存在');
+        }
+        if (merchant.balance <= 0) {
+            throw new common_1.BadRequestException('该商家额度已用完', '4001');
+        }
+        const images = await this.matchImages(merchantId, type, 6);
+        yield { event: 'start', data: { trace_id: traceId, images } };
+        const prompt = await this.promptBuilder.buildMerchantPrompt(merchant, type, options);
+        let content = '';
+        try {
+            for await (const chunk of this.aiService.generateStream(prompt, type === 'note' ? 260 : 520)) {
+                content += chunk;
+                yield { event: 'content', data: { text: chunk } };
+            }
+        }
+        catch (error) {
+            console.error('AI流式生成失败:', error);
+            throw new common_1.BadRequestException('AI服务异常', '4002');
+        }
+        if (await this.promptBuilder.containsSensitiveWords(content)) {
+            throw new common_1.BadRequestException('内容优化中，请重试', '4003');
+        }
+        merchant.balance -= 1;
+        await this.merchantRepository.save(merchant);
+        const generation = this.generationRepository.create({
+            merchantId,
+            tenantId: merchant.tenantId,
+            type,
+            content,
+            images,
+            traceId,
+            duration: Date.now() - startTime,
+        });
+        await this.generationRepository.save(generation);
+        try {
+            await this.analyticsRepository.save({
+                merchantId,
+                traceId,
+                eventType: 'gen',
+                type,
+            });
+        }
+        catch (error) {
+            console.error('埋点记录失败:', error);
+        }
+        yield {
+            event: 'done',
+            data: {
+                trace_id: traceId,
+                content: {
+                    text: content,
+                    images,
+                },
+                duration: Date.now() - startTime,
             },
         };
     }
@@ -129,55 +198,64 @@ let H5Service = class H5Service {
         });
         await this.analyticsRepository.save(log);
     }
-    async buildPrompt(merchant, type) {
-        const industryPrompts = {
-            catering: '你是一个专业的餐饮营销文案专家，文风活泼、接地气，擅长写吸引人的评价。',
-            beauty: '你是一个专业的美业营销文案专家，文风精致，擅长写高端感的评价。',
-            general: '你是一个专业的营销文案专家，擅长写各类评价。',
-        };
-        const typeInstructions = {
-            review: '请生成一条大众点评/美团风格的评价，内容要真实自然，突出商家特色。',
-            note: '请生成一条小红书风格的笔记，内容要有分享感，可以使用emoji。',
-        };
-        let prompt = `${industryPrompts[merchant.category] || industryPrompts.general}\n`;
-        prompt += `${typeInstructions[type] || typeInstructions.review}\n`;
-        if (merchant.features?.length) {
-            prompt += `商家特色：${merchant.features.join('、')}\n`;
-        }
-        if (merchant.products?.length) {
-            prompt += `主要产品：${merchant.products.join('、')}\n`;
-        }
-        if (merchant.incentive) {
-            prompt += `激励活动：${merchant.incentive}\n`;
-        }
-        const activeRules = await this.sensitiveWordRepository.find({ where: { active: true } });
-        if (activeRules.length > 0) {
-            const ruleConstraints = activeRules
-                .filter(r => r.rule)
-                .map(r => `- ${r.rule}`)
-                .join('\n');
-            if (ruleConstraints) {
-                prompt += `\n\n【合规要求】请严格遵守以下规则：\n${ruleConstraints}`;
-            }
-        }
-        prompt += '\n\n【重要】请确保内容符合平台规范，文风自然，避免AI味。';
-        return prompt;
+    async findCoverImage(merchantId) {
+        const image = await this.imageRepository.createQueryBuilder('image')
+            .where('image.merchantId = :merchantId', { merchantId })
+            .andWhere('image.isDeleted = 0')
+            .andWhere('image.url IS NOT NULL')
+            .andWhere("image.url != ''")
+            .orderBy(`CASE image.tab WHEN 'environment' THEN 1 WHEN 'product' THEN 2 WHEN 'other' THEN 3 ELSE 4 END`, 'ASC')
+            .addOrderBy('image.createdAt', 'DESC')
+            .getOne();
+        return image?.url || '';
     }
-    async callAI(prompt, type) {
-        return await this.aiService.generate(prompt);
-    }
-    async containsSensitiveWords(text) {
-        const rules = await this.sensitiveWordRepository.find({ where: { active: true } });
-        if (!rules.length)
-            return false;
-        return rules.some(r => r.word && text.includes(r.word));
-    }
-    mockImages(count) {
-        return Array.from({ length: count }, (_, i) => ({
-            url: `https://via.placeholder.com/300x300?text=Image${i + 1}`,
-            width: 300,
-            height: 300,
+    async findProductImages(merchantId, count) {
+        const images = await this.imageRepository.find({
+            where: { merchantId, tab: 'product', isDeleted: 0 },
+            order: { createdAt: 'DESC' },
+            take: count,
+        });
+        return images
+            .filter(image => image.url)
+            .map(image => ({
+            url: image.url,
+            product_tag: image.productTag || '',
+            source: 'product',
         }));
+    }
+    async matchImages(merchantId, type, count) {
+        const preferredTab = type === 'note' ? 'product' : 'environment';
+        const primary = await this.imageRepository.find({
+            where: { merchantId, tab: preferredTab, isDeleted: 0 },
+            order: { createdAt: 'DESC' },
+            take: count,
+        });
+        const images = primary
+            .filter(image => image.url)
+            .map(image => ({
+            url: image.url,
+            source: image.tab,
+            product_tag: image.productTag || '',
+        }));
+        if (images.length < count) {
+            const fallback = await this.imageRepository.find({
+                where: { merchantId, isDeleted: 0 },
+                order: { createdAt: 'DESC' },
+                take: count,
+            });
+            fallback.forEach(image => {
+                if (images.length >= count)
+                    return;
+                if (!image.url || images.some(item => item.url === image.url))
+                    return;
+                images.push({
+                    url: image.url,
+                    source: image.tab,
+                    product_tag: image.productTag || '',
+                });
+            });
+        }
+        return images;
     }
 };
 exports.H5Service = H5Service;
@@ -186,11 +264,12 @@ exports.H5Service = H5Service = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(merchant_entity_1.Merchant)),
     __param(1, (0, typeorm_1.InjectRepository)(generation_entity_1.Generation)),
     __param(2, (0, typeorm_1.InjectRepository)(analytics_log_entity_1.AnalyticsLog)),
-    __param(3, (0, typeorm_1.InjectRepository)(sensitive_word_entity_1.SensitiveWord)),
+    __param(3, (0, typeorm_1.InjectRepository)(merchant_image_entity_1.MerchantImage)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
-        ai_service_1.AiService])
+        ai_service_1.AiService,
+        prompt_builder_service_1.PromptBuilderService])
 ], H5Service);
 //# sourceMappingURL=h5.service.js.map

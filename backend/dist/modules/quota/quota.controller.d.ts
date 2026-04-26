@@ -13,6 +13,14 @@ export declare class QuotaController {
         timestamp: number;
         success: boolean;
     }>;
+    getTenantBalance(req: any): Promise<{
+        code: number;
+        data: {
+            balance: number;
+            total_quota: number;
+            used_quota: number;
+        };
+    }>;
     allocate(id: string, body: {
         amount: number;
     }): Promise<{

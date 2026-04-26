@@ -6,6 +6,8 @@ import { Tenant } from '../auth/tenant.entity';
 import { Merchant } from '../merchant/merchant.entity';
 import { PromptTemplate } from './prompt-template.entity';
 import { SensitiveWord } from './sensitive-word.entity';
+import { AiAgentConfig } from './ai-agent-config.entity';
+import { AiSkill } from './ai-skill.entity';
 
 @Injectable()
 export class AdminService {
@@ -18,6 +20,10 @@ export class AdminService {
     private promptRepository: Repository<PromptTemplate>,
     @InjectRepository(SensitiveWord)
     private sensitiveRepository: Repository<SensitiveWord>,
+    @InjectRepository(AiAgentConfig)
+    private agentConfigRepository: Repository<AiAgentConfig>,
+    @InjectRepository(AiSkill)
+    private skillRepository: Repository<AiSkill>,
   ) {}
 
   /**
@@ -496,5 +502,129 @@ export class AdminService {
       from_tenant: merchant.tenantId,
       to_tenant: targetTenantId,
     };
+  }
+
+  async getAiAgents(params: { step_key?: string }) {
+    const query = this.agentConfigRepository.createQueryBuilder('a');
+    if (params.step_key) {
+      query.where('a.stepKey = :stepKey', { stepKey: params.step_key });
+    }
+    query.orderBy('a.createdAt', 'DESC');
+    const list = await query.getMany();
+    return {
+      list: list.map(item => ({
+        id: item.agentId,
+        name: item.name,
+        step_key: item.stepKey,
+        model: item.model,
+        temperature: item.temperature,
+        max_iterations: item.maxIterations,
+        system_prompt: item.systemPrompt,
+        is_active: item.isActive,
+        created_at: item.createdAt,
+      })),
+      total: list.length,
+    };
+  }
+
+  async createAiAgent(data: {
+    name: string;
+    step_key: string;
+    model?: string;
+    temperature?: number;
+    max_iterations?: number;
+    system_prompt: string;
+  }) {
+    const agent = this.agentConfigRepository.create({
+      agentId: uuidv4(),
+      name: data.name,
+      stepKey: data.step_key,
+      model: data.model || 'gpt-5.4',
+      temperature: data.temperature ?? 0.7,
+      maxIterations: data.max_iterations || 3,
+      systemPrompt: data.system_prompt,
+      isActive: true,
+    });
+    await this.agentConfigRepository.save(agent);
+    return { id: agent.agentId };
+  }
+
+  async updateAiAgent(agentId: string, data: {
+    name?: string;
+    step_key?: string;
+    model?: string;
+    temperature?: number;
+    max_iterations?: number;
+    system_prompt?: string;
+    is_active?: boolean;
+  }) {
+    const agent = await this.agentConfigRepository.findOne({ where: { agentId } });
+    if (!agent) throw new NotFoundException('Agent配置不存在');
+    if (data.name !== undefined) agent.name = data.name;
+    if (data.step_key !== undefined) agent.stepKey = data.step_key;
+    if (data.model !== undefined) agent.model = data.model;
+    if (data.temperature !== undefined) agent.temperature = data.temperature;
+    if (data.max_iterations !== undefined) agent.maxIterations = data.max_iterations;
+    if (data.system_prompt !== undefined) agent.systemPrompt = data.system_prompt;
+    if (data.is_active !== undefined) agent.isActive = data.is_active;
+    await this.agentConfigRepository.save(agent);
+    return { id: agent.agentId };
+  }
+
+  async getAiSkills(params: { agent_type?: string }) {
+    const query = this.skillRepository.createQueryBuilder('s');
+    if (params.agent_type) {
+      query.where('s.agentType = :agentType', { agentType: params.agent_type });
+    }
+    query.orderBy('s.createdAt', 'DESC');
+    const list = await query.getMany();
+    return {
+      list: list.map(item => ({
+        id: item.skillId,
+        name: item.name,
+        agent_type: item.agentType,
+        content: item.content,
+        version: item.version,
+        is_active: item.isActive,
+        created_at: item.createdAt,
+      })),
+      total: list.length,
+    };
+  }
+
+  async createAiSkill(data: {
+    name: string;
+    agent_type: string;
+    content: string;
+  }) {
+    const skill = this.skillRepository.create({
+      skillId: uuidv4(),
+      name: data.name,
+      agentType: data.agent_type,
+      content: data.content,
+      version: 1,
+      isActive: true,
+    });
+    await this.skillRepository.save(skill);
+    return { id: skill.skillId };
+  }
+
+  async updateAiSkill(skillId: string, data: {
+    name?: string;
+    agent_type?: string;
+    content?: string;
+    is_active?: boolean;
+  }) {
+    const skill = await this.skillRepository.findOne({ where: { skillId } });
+    if (!skill) throw new NotFoundException('Skill不存在');
+    if (data.name !== undefined) skill.name = data.name;
+    if (data.agent_type !== undefined) skill.agentType = data.agent_type;
+    if (data.content !== undefined) {
+      skill.content = data.content;
+      skill.version += 1;
+    }
+    if (data.is_active !== undefined) skill.isActive = data.is_active;
+    await this.skillRepository.save(skill);
+    return { id: skill.skillId, version: skill.version };
   }
 }

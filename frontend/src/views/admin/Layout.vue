@@ -106,7 +106,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import { Grid, OfficeBuilding, Document, Warning, Moon, Sunny, Promotion } from '@element-plus/icons-vue'
+import { Grid, OfficeBuilding, Document, Warning, Moon, Sunny, Promotion, MagicStick } from '@element-plus/icons-vue'
 import { quota } from '@/api'
 
 const route = useRoute()
@@ -115,7 +115,8 @@ const menuItems = [
   { path: '/admin', name: '数据看板', icon: Grid },
   { path: '/admin/companies', name: '公司管理', icon: OfficeBuilding },
   { path: '/admin/prompts', name: '提示词库', icon: Document },
-  { path: '/admin/sensitive', name: '风控规则', icon: Warning }
+  { path: '/admin/sensitive', name: '风控规则', icon: Warning },
+  { path: '/admin/ai-workflow', name: 'AI工作流', icon: MagicStick }
 ]
 
 const currentTitle = computed(() => {

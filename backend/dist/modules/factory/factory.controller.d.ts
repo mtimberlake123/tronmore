@@ -2,6 +2,78 @@ import { FactoryService } from './factory.service';
 export declare class FactoryController {
     private factoryService;
     constructor(factoryService: FactoryService);
+    getFactoryModules(): Promise<{
+        code: number;
+        data: {
+            key: string;
+            name: string;
+            description: string;
+            mediaType: string;
+            goal: string;
+            supportedRatios: string[];
+            cost: number;
+        }[];
+    }>;
+    createFactoryGeneration(body: {
+        merchant_id: string;
+        module_key: string;
+        prompt: string;
+        ratio: string;
+        style: string;
+        reference_images?: string[];
+    }, user: any): Promise<{
+        code: number;
+        data: {
+            id: string;
+            status: string;
+            cost: number;
+            message: string;
+        };
+    }>;
+    getFactoryGeneration(id: string, user: any): Promise<{
+        code: number;
+        data: {
+            id: string;
+            merchant_id: string;
+            status: string;
+            image_url: string;
+            module_key: any;
+            module_name: any;
+            prompt: any;
+            ratio: any;
+            style: any;
+            reference_images: any;
+            ai_text: any;
+            error_message: any;
+            created_at: Date;
+        };
+    }>;
+    getFactoryHistory(query: {
+        module_key?: string;
+        merchant_id?: string;
+        page?: number;
+        page_size?: number;
+    }, user: any): Promise<{
+        code: number;
+        data: {
+            list: {
+                id: string;
+                merchant_id: string;
+                status: string;
+                image_url: string;
+                module_key: any;
+                module_name: any;
+                prompt: any;
+                ratio: any;
+                style: any;
+                reference_images: any;
+                ai_text: any;
+                error_message: any;
+                created_at: Date;
+            }[];
+            total: number;
+        };
+    }>;
     getTemplates(query: {
         category?: string;
         scene?: string;

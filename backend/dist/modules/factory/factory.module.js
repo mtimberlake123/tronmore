@@ -15,12 +15,13 @@ const poster_template_entity_1 = require("./poster-template.entity");
 const poster_entity_1 = require("./poster.entity");
 const draft_entity_1 = require("./draft.entity");
 const merchant_entity_1 = require("../merchant/merchant.entity");
+const tenant_entity_1 = require("../auth/tenant.entity");
 let FactoryModule = class FactoryModule {
 };
 exports.FactoryModule = FactoryModule;
 exports.FactoryModule = FactoryModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([poster_template_entity_1.PosterTemplate, poster_entity_1.Poster, draft_entity_1.Draft, merchant_entity_1.Merchant])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([poster_template_entity_1.PosterTemplate, poster_entity_1.Poster, draft_entity_1.Draft, merchant_entity_1.Merchant, tenant_entity_1.Tenant])],
         controllers: [factory_controller_1.FactoryController],
         providers: [factory_service_1.FactoryService],
         exports: [factory_service_1.FactoryService],

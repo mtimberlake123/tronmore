@@ -15,13 +15,16 @@ const generation_entity_1 = require("./generation.entity");
 const merchant_entity_1 = require("../merchant/merchant.entity");
 const merchant_image_entity_1 = require("../warehouse/merchant-image.entity");
 const analytics_log_entity_1 = require("../analytics/analytics-log.entity");
-const sensitive_word_entity_1 = require("../admin/sensitive-word.entity");
+const prompt_builder_module_1 = require("../prompt-builder/prompt-builder.module");
 let GeneratorModule = class GeneratorModule {
 };
 exports.GeneratorModule = GeneratorModule;
 exports.GeneratorModule = GeneratorModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([generation_entity_1.Generation, merchant_entity_1.Merchant, merchant_image_entity_1.MerchantImage, analytics_log_entity_1.AnalyticsLog, sensitive_word_entity_1.SensitiveWord])],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([generation_entity_1.Generation, merchant_entity_1.Merchant, merchant_image_entity_1.MerchantImage, analytics_log_entity_1.AnalyticsLog]),
+            prompt_builder_module_1.PromptBuilderModule,
+        ],
         controllers: [generator_controller_1.GeneratorController],
         providers: [generator_service_1.GeneratorService],
         exports: [generator_service_1.GeneratorService],

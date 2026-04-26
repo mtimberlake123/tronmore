@@ -27,6 +27,13 @@ let GeneratorController = class GeneratorController {
             data,
         };
     }
+    async previewReview(req, body) {
+        const data = await this.generatorService.previewReview(req.user.tenantId, body.merchant_id, body.options || {});
+        return {
+            code: 200,
+            data,
+        };
+    }
     async getGenerations(req, query) {
         return {
             code: 200,
@@ -49,6 +56,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], GeneratorController.prototype, "generate", null);
+__decorate([
+    (0, common_1.Post)('review-preview'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], GeneratorController.prototype, "previewReview", null);
 __decorate([
     (0, common_1.Get)('generations'),
     __param(0, (0, common_1.Request)()),

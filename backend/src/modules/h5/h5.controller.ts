@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { H5Service } from './h5.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('h5')
 export class H5Controller {
@@ -24,12 +24,70 @@ export class H5Controller {
    * POST /h5/generate
    */
   @Post('generate')
-  async generate(@Body() body: { merchant_id: string; type: string }) {
-    const data = await this.h5Service.generateContent(body.merchant_id, body.type);
+  async generate(@Body() body: {
+    merchant_id: string;
+    type: string;
+    visitor_id?: string;
+    generation_id?: string;
+    recent_outputs?: string[];
+  }) {
+    const data = await this.h5Service.generateContent(body.merchant_id, body.type, {
+      personaSeed: body.visitor_id,
+      variationSeed: body.generation_id,
+      recentOutputs: body.recent_outputs,
+    });
     return {
       code: 200,
       data,
     };
+  }
+
+  /**
+   * H5端AI流式生成
+   * POST /h5/generate-stream
+   */
+  @Post('generate-stream')
+  async generateStream(
+    @Body() body: {
+      merchant_id: string;
+      type: string;
+      visitor_id?: string;
+      generation_id?: string;
+      recent_outputs?: string[];
+    },
+    @Res() res: Response,
+  ) {
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders?.();
+
+    const send = (event: string, data: any) => {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      for await (const chunk of this.h5Service.generateContentStream(body.merchant_id, body.type, {
+        personaSeed: body.visitor_id,
+        variationSeed: body.generation_id,
+        recentOutputs: body.recent_outputs,
+      })) {
+        send(chunk.event, chunk.data);
+      }
+    } catch (error) {
+      const response = typeof error.getResponse === 'function' ? error.getResponse() : null;
+      const message = typeof response === 'object' && response?.message
+        ? response.message
+        : error.message || '生成失败';
+      send('error', {
+        message,
+        statusCode: error.status || response?.statusCode,
+        code: message.includes('额度') ? '4001' : undefined,
+      });
+    } finally {
+      res.end();
+    }
   }
 
   /**

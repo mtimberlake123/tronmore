@@ -2,34 +2,47 @@ import { Repository } from 'typeorm';
 import { Merchant } from '../merchant/merchant.entity';
 import { Generation } from '../generator/generation.entity';
 import { AnalyticsLog } from '../analytics/analytics-log.entity';
-import { SensitiveWord } from '../admin/sensitive-word.entity';
 import { AiService } from '../ai/ai.service';
+import { BuildPromptOptions, PromptBuilderService } from '../prompt-builder/prompt-builder.service';
+import { MerchantImage } from '../warehouse/merchant-image.entity';
 export declare class H5Service {
     private merchantRepository;
     private generationRepository;
     private analyticsRepository;
-    private sensitiveWordRepository;
+    private imageRepository;
     private aiService;
-    constructor(merchantRepository: Repository<Merchant>, generationRepository: Repository<Generation>, analyticsRepository: Repository<AnalyticsLog>, sensitiveWordRepository: Repository<SensitiveWord>, aiService: AiService);
+    private promptBuilder;
+    constructor(merchantRepository: Repository<Merchant>, generationRepository: Repository<Generation>, analyticsRepository: Repository<AnalyticsLog>, imageRepository: Repository<MerchantImage>, aiService: AiService, promptBuilder: PromptBuilderService);
     getMerchantConfig(merchantId: string): Promise<{
         merchant_id: string;
         name: string;
         logo: string;
+        cover_image: string;
+        product_images: {
+            url: string;
+            product_tag: string;
+            source: string;
+        }[];
         incentive: string;
         jump_targets: any;
         dy_url: any;
         wx_qr: any;
+        address: any;
     }>;
-    generateContent(merchantId: string, type: string): Promise<{
+    generateContent(merchantId: string, type: string, options?: BuildPromptOptions): Promise<{
         trace_id: string;
         content: {
             text: string;
             images: {
                 url: string;
-                width: number;
-                height: number;
+                source: string;
+                product_tag: string;
             }[];
         };
+    }>;
+    generateContentStream(merchantId: string, type: string, options?: BuildPromptOptions): AsyncGenerator<{
+        event: string;
+        data: any;
     }>;
     track(data: {
         event: string;
@@ -49,8 +62,7 @@ export declare class H5Service {
         publish_url?: string;
         client_time?: string;
     }): Promise<void>;
-    private buildPrompt;
-    private callAI;
-    private containsSensitiveWords;
-    private mockImages;
+    private findCoverImage;
+    private findProductImages;
+    private matchImages;
 }

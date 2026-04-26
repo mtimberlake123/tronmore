@@ -14,13 +14,17 @@ const h5_service_1 = require("./h5.service");
 const merchant_entity_1 = require("../merchant/merchant.entity");
 const generation_entity_1 = require("../generator/generation.entity");
 const analytics_log_entity_1 = require("../analytics/analytics-log.entity");
-const sensitive_word_entity_1 = require("../admin/sensitive-word.entity");
+const prompt_builder_module_1 = require("../prompt-builder/prompt-builder.module");
+const merchant_image_entity_1 = require("../warehouse/merchant-image.entity");
 let H5Module = class H5Module {
 };
 exports.H5Module = H5Module;
 exports.H5Module = H5Module = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([merchant_entity_1.Merchant, generation_entity_1.Generation, analytics_log_entity_1.AnalyticsLog, sensitive_word_entity_1.SensitiveWord])],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([merchant_entity_1.Merchant, generation_entity_1.Generation, analytics_log_entity_1.AnalyticsLog, merchant_image_entity_1.MerchantImage]),
+            prompt_builder_module_1.PromptBuilderModule,
+        ],
         controllers: [h5_controller_1.H5Controller],
         providers: [h5_service_1.H5Service],
         exports: [h5_service_1.H5Service],

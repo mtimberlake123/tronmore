@@ -58,39 +58,24 @@ let AuthService = class AuthService {
         this.tenantRepository = tenantRepository;
         this.jwtService = jwtService;
     }
-    async loginByPassword(account, password) {
-        const tenant = await this.tenantRepository.findOne({
-            where: [{ phone: account }, { name: account }],
-        });
-        if (!tenant || !await bcrypt.compare(password, tenant.password || '')) {
-            throw new common_1.UnauthorizedException('账号或密码错误');
+    async hashPassword(password) {
+        if (!password) {
+            return null;
         }
-        if (tenant.status !== 1) {
-            throw new common_1.UnauthorizedException('账号已被禁用');
-        }
-        const token = this.jwtService.sign({ sub: tenant.id, tenantId: tenant.tenantId });
-        return {
-            token,
-            company_id: tenant.tenantId,
-            company_name: tenant.name,
-            balance: tenant.balance,
-        };
+        return bcrypt.hash(password, 10);
     }
-    async loginBySms(phone, code, isNew = false) {
-        let tenant = await this.tenantRepository.findOne({ where: { phone } });
-        if (!tenant && isNew) {
-            tenant = this.tenantRepository.create({
-                tenantId: (0, uuid_1.v4)(),
-                name: `用户${phone.slice(-4)}`,
-                phone,
-                balance: 0,
-                status: 1,
-            });
-            await this.tenantRepository.save(tenant);
+    async verifyPassword(input, stored) {
+        if (!stored) {
+            return false;
         }
-        if (!tenant) {
-            throw new common_1.UnauthorizedException('用户不存在');
+        try {
+            return await bcrypt.compare(input, stored);
         }
+        catch {
+            return input === stored;
+        }
+    }
+    buildLoginPayload(tenant) {
         const token = this.jwtService.sign({ sub: tenant.id, tenantId: tenant.tenantId });
         return {
             token,
@@ -100,14 +85,78 @@ let AuthService = class AuthService {
             is_new: !tenant.password,
         };
     }
+    async loginByPassword(account, password) {
+        const tenant = await this.tenantRepository.findOne({
+            where: [{ phone: account }, { name: account }],
+        });
+        if (!tenant || !await this.verifyPassword(password, tenant.password)) {
+            throw new common_1.UnauthorizedException('账号或密码错误');
+        }
+        if (tenant.status !== 1) {
+            throw new common_1.UnauthorizedException('账号已被禁用');
+        }
+        return this.buildLoginPayload(tenant);
+    }
+    async loginBySms(phone, code, isNew = false) {
+        void code;
+        let tenant = await this.tenantRepository.findOne({ where: { phone } });
+        if (!tenant && isNew) {
+            tenant = this.tenantRepository.create({
+                tenantId: (0, uuid_1.v4)(),
+                name: `用户${phone.slice(-4)}`,
+                phone,
+                password: null,
+                balance: 0,
+                status: 1,
+            });
+            await this.tenantRepository.save(tenant);
+        }
+        if (!tenant) {
+            throw new common_1.UnauthorizedException('用户不存在');
+        }
+        return this.buildLoginPayload(tenant);
+    }
+    async register(data) {
+        void data.code;
+        if (!data.company_name?.trim()) {
+            throw new common_1.BadRequestException('公司名称不能为空');
+        }
+        if (!data.phone?.trim()) {
+            throw new common_1.BadRequestException('手机号不能为空');
+        }
+        if (!data.password || data.password.length < 6) {
+            throw new common_1.BadRequestException('密码至少 6 位');
+        }
+        const exists = await this.tenantRepository.findOne({ where: { phone: data.phone.trim() } });
+        if (exists) {
+            throw new common_1.BadRequestException('该手机号已注册');
+        }
+        const tenant = this.tenantRepository.create({
+            tenantId: (0, uuid_1.v4)(),
+            name: data.company_name.trim(),
+            phone: data.phone.trim(),
+            password: await this.hashPassword(data.password),
+            balance: 0,
+            totalQuota: 0,
+            usedQuota: 0,
+            status: 1,
+            role: 'user',
+            isAdmin: false,
+        });
+        await this.tenantRepository.save(tenant);
+        return this.buildLoginPayload(tenant);
+    }
     async sendSms(phone, type) {
+        void phone;
+        void type;
         return { message: '验证码已发送' };
     }
     async refresh(refreshToken) {
+        void refreshToken;
         throw new common_1.BadRequestException('暂不支持');
     }
     async logout() {
-        return { message: '登出成功' };
+        return { message: '退出成功' };
     }
     async validateToken(payload) {
         const tenant = await this.tenantRepository.findOne({ where: { id: payload.sub } });

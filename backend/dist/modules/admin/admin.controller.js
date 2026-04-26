@@ -111,6 +111,42 @@ let AdminController = class AdminController {
             ...(await this.adminService.transferMerchant(id, body.targetTenantId)),
         };
     }
+    async getAiAgents(query) {
+        return {
+            code: 200,
+            data: await this.adminService.getAiAgents(query),
+        };
+    }
+    async createAiAgent(body) {
+        return {
+            code: 200,
+            data: await this.adminService.createAiAgent(body),
+        };
+    }
+    async updateAiAgent(id, body) {
+        return {
+            code: 200,
+            data: await this.adminService.updateAiAgent(id, body),
+        };
+    }
+    async getAiSkills(query) {
+        return {
+            code: 200,
+            data: await this.adminService.getAiSkills(query),
+        };
+    }
+    async createAiSkill(body) {
+        return {
+            code: 200,
+            data: await this.adminService.createAiSkill(body),
+        };
+    }
+    async updateAiSkill(id, body) {
+        return {
+            code: 200,
+            data: await this.adminService.updateAiSkill(id, body),
+        };
+    }
 };
 exports.AdminController = AdminController;
 __decorate([
@@ -222,6 +258,50 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "transferMerchant", null);
+__decorate([
+    (0, common_1.Get)('ai-agents'),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getAiAgents", null);
+__decorate([
+    (0, common_1.Post)('ai-agents'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "createAiAgent", null);
+__decorate([
+    (0, common_1.Put)('ai-agents/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updateAiAgent", null);
+__decorate([
+    (0, common_1.Get)('ai-skills'),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getAiSkills", null);
+__decorate([
+    (0, common_1.Post)('ai-skills'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "createAiSkill", null);
+__decorate([
+    (0, common_1.Put)('ai-skills/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updateAiSkill", null);
 exports.AdminController = AdminController = __decorate([
     (0, common_1.Controller)('admin'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, admin_guard_1.AdminGuard),

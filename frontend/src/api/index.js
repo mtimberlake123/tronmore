@@ -80,7 +80,10 @@ export const quota = {
   tenantBalance: () => request.get('/quota/balance'),
   // 额度查询（外部API）- API返回20000000对应40元，换算比例500000
   balance: () => {
-    const apiKey = localStorage.getItem('apiKey') || 'sk-MtssNtmuPIELmwWO5wY8bK3TOfGGofGjmOwmxCQEOXqZCVN1'
+    const apiKey = localStorage.getItem('apiKey') || ''
+    if (!apiKey) {
+      return Promise.reject(new Error('请先配置 API Key'))
+    }
     return axios.get('https://api.chatfire.site/v1/chatfire/balance', {
       headers: { Authorization: `Bearer ${apiKey}` }
     }).then(res => {
@@ -130,6 +133,14 @@ export const reference = {
   }
 }
 
+export const marketingVideo = {
+  types: () => request.get('/marketing-videos/types'),
+  list: () => request.get('/marketing-videos'),
+  create: (data) => request.post('/marketing-videos', data),
+  detail: (id) => request.get(`/marketing-videos/${id}`),
+  updateStep: (id, stepKey, data) => request.put(`/marketing-videos/${id}/steps/${stepKey}`, data)
+}
+
 export const industry = {
   list: () => request.get('/industries')
 }
@@ -161,5 +172,15 @@ export const admin = {
     update: (id, data) => request.put(`/admin/sensitive-words/${id}`, data),
     delete: (id) => request.delete(`/admin/sensitive-words/${id}`),
     activeRules: () => request.get('/admin/rules/active')
+  },
+  aiAgents: {
+    list: (params) => request.get('/admin/ai-agents', { params }),
+    create: (data) => request.post('/admin/ai-agents', data),
+    update: (id, data) => request.put(`/admin/ai-agents/${id}`, data)
+  },
+  aiSkills: {
+    list: (params) => request.get('/admin/ai-skills', { params }),
+    create: (data) => request.post('/admin/ai-skills', data),
+    update: (id, data) => request.put(`/admin/ai-skills/${id}`, data)
   }
 }

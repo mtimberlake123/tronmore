@@ -66,12 +66,14 @@ const balance = ref(0)
 const showDropdown = ref(false)
 const companyName = localStorage.getItem('company_name') || ''
 const isDark = ref(localStorage.getItem('theme') === 'dark')
-const hideTopbar = computed(() => Boolean(route.meta.hideTopbar))
+const dynamicHideTopbar = ref(false)
+const hideTopbar = computed(() => Boolean(route.meta.hideTopbar) || dynamicHideTopbar.value)
+const hideTopbarMenu = computed(() => false)
 
 const menuItems = [
   { path: '/merchants', name: '商家中心', icon: House },
-  { path: '/factory', name: '宣传工厂', icon: Picture },
-  { path: '/references', name: '营销工具', icon: Promotion }
+  { path: '/factory', name: '物料设计', icon: Picture },
+  { path: '/references', name: '营销视频', icon: Promotion }
 ]
 
 const userInitial = computed(() => companyName ? companyName.charAt(0) : '企')
@@ -108,9 +110,14 @@ const handleClickOutside = (event) => {
   }
 }
 
+const handleTopbarVisibility = (event) => {
+  dynamicHideTopbar.value = Boolean(event.detail?.hide)
+}
+
 onMounted(async () => {
   applyTheme()
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('tronmore:layout-topbar', handleTopbarVisibility)
 
   try {
     const res = await quota.tenantBalance()
@@ -122,6 +129,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('tronmore:layout-topbar', handleTopbarVisibility)
 })
 </script>
 

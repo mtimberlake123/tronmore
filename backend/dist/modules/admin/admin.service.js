@@ -21,12 +21,16 @@ const tenant_entity_1 = require("../auth/tenant.entity");
 const merchant_entity_1 = require("../merchant/merchant.entity");
 const prompt_template_entity_1 = require("./prompt-template.entity");
 const sensitive_word_entity_1 = require("./sensitive-word.entity");
+const ai_agent_config_entity_1 = require("./ai-agent-config.entity");
+const ai_skill_entity_1 = require("./ai-skill.entity");
 let AdminService = class AdminService {
-    constructor(tenantRepository, merchantRepository, promptRepository, sensitiveRepository) {
+    constructor(tenantRepository, merchantRepository, promptRepository, sensitiveRepository, agentConfigRepository, skillRepository) {
         this.tenantRepository = tenantRepository;
         this.merchantRepository = merchantRepository;
         this.promptRepository = promptRepository;
         this.sensitiveRepository = sensitiveRepository;
+        this.agentConfigRepository = agentConfigRepository;
+        this.skillRepository = skillRepository;
     }
     async getCompanies(params) {
         const { page = 1, page_size = 20, keyword } = params;
@@ -42,16 +46,19 @@ let AdminService = class AdminService {
         const [list, total] = await query.getManyAndCount();
         const tenantIds = list.map(t => t.tenantId);
         let countMap = {};
+        let merchantBalanceMap = {};
         if (tenantIds.length > 0) {
             const merchantCounts = await this.merchantRepository
                 .createQueryBuilder('m')
                 .select('m.tenantId', 'tenantId')
                 .addSelect('COUNT(*)', 'count')
+                .addSelect('COALESCE(SUM(m.balance), 0)', 'merchantBalance')
                 .where('m.tenantId IN (:...tenantIds)', { tenantIds })
                 .groupBy('m.tenantId')
                 .getRawMany();
             merchantCounts.forEach(mc => {
                 countMap[mc.tenantId] = parseInt(mc.count);
+                merchantBalanceMap[mc.tenantId] = Number(mc.merchantBalance || 0);
             });
         }
         return {
@@ -60,8 +67,13 @@ let AdminService = class AdminService {
                 name: t.name,
                 phone: t.phone,
                 balance: t.balance,
+                company_balance: t.balance,
+                merchant_balance: merchantBalanceMap[t.tenantId] || 0,
+                total_remaining: t.balance + (merchantBalanceMap[t.tenantId] || 0),
                 total_quota: t.totalQuota,
                 used_quota: t.usedQuota,
+                allocated_quota: t.usedQuota,
+                unallocated_quota: t.balance,
                 status: t.status,
                 created_at: t.createdAt,
                 merchants: countMap[t.tenantId] || 0,
@@ -92,7 +104,12 @@ let AdminService = class AdminService {
         };
     }
     async recharge(companyId, data) {
-        const tenant = await this.tenantRepository.findOne({ where: { tenantId: companyId } });
+        const tenant = await this.tenantRepository.findOne({
+            where: [
+                { tenantId: companyId },
+                ...(Number.isInteger(Number(companyId)) ? [{ id: Number(companyId) }] : []),
+            ],
+        });
         if (!tenant) {
             throw new common_1.NotFoundException('营销公司不存在');
         }
@@ -104,7 +121,7 @@ let AdminService = class AdminService {
         tenant.totalQuota += data.amount;
         await this.tenantRepository.save(tenant);
         return {
-            company_id: companyId,
+            company_id: tenant.tenantId,
             before,
             after: tenant.balance,
             amount: data.amount,
@@ -337,6 +354,112 @@ let AdminService = class AdminService {
             to_tenant: targetTenantId,
         };
     }
+    async getAiAgents(params) {
+        const query = this.agentConfigRepository.createQueryBuilder('a');
+        if (params.step_key) {
+            query.where('a.stepKey = :stepKey', { stepKey: params.step_key });
+        }
+        query.orderBy('a.createdAt', 'DESC');
+        const list = await query.getMany();
+        return {
+            list: list.map(item => ({
+                id: item.agentId,
+                name: item.name,
+                step_key: item.stepKey,
+                model: item.model,
+                temperature: item.temperature,
+                max_iterations: item.maxIterations,
+                system_prompt: item.systemPrompt,
+                is_active: item.isActive,
+                created_at: item.createdAt,
+            })),
+            total: list.length,
+        };
+    }
+    async createAiAgent(data) {
+        const agent = this.agentConfigRepository.create({
+            agentId: (0, uuid_1.v4)(),
+            name: data.name,
+            stepKey: data.step_key,
+            model: data.model || 'gpt-5.4',
+            temperature: data.temperature ?? 0.7,
+            maxIterations: data.max_iterations || 3,
+            systemPrompt: data.system_prompt,
+            isActive: true,
+        });
+        await this.agentConfigRepository.save(agent);
+        return { id: agent.agentId };
+    }
+    async updateAiAgent(agentId, data) {
+        const agent = await this.agentConfigRepository.findOne({ where: { agentId } });
+        if (!agent)
+            throw new common_1.NotFoundException('Agent配置不存在');
+        if (data.name !== undefined)
+            agent.name = data.name;
+        if (data.step_key !== undefined)
+            agent.stepKey = data.step_key;
+        if (data.model !== undefined)
+            agent.model = data.model;
+        if (data.temperature !== undefined)
+            agent.temperature = data.temperature;
+        if (data.max_iterations !== undefined)
+            agent.maxIterations = data.max_iterations;
+        if (data.system_prompt !== undefined)
+            agent.systemPrompt = data.system_prompt;
+        if (data.is_active !== undefined)
+            agent.isActive = data.is_active;
+        await this.agentConfigRepository.save(agent);
+        return { id: agent.agentId };
+    }
+    async getAiSkills(params) {
+        const query = this.skillRepository.createQueryBuilder('s');
+        if (params.agent_type) {
+            query.where('s.agentType = :agentType', { agentType: params.agent_type });
+        }
+        query.orderBy('s.createdAt', 'DESC');
+        const list = await query.getMany();
+        return {
+            list: list.map(item => ({
+                id: item.skillId,
+                name: item.name,
+                agent_type: item.agentType,
+                content: item.content,
+                version: item.version,
+                is_active: item.isActive,
+                created_at: item.createdAt,
+            })),
+            total: list.length,
+        };
+    }
+    async createAiSkill(data) {
+        const skill = this.skillRepository.create({
+            skillId: (0, uuid_1.v4)(),
+            name: data.name,
+            agentType: data.agent_type,
+            content: data.content,
+            version: 1,
+            isActive: true,
+        });
+        await this.skillRepository.save(skill);
+        return { id: skill.skillId };
+    }
+    async updateAiSkill(skillId, data) {
+        const skill = await this.skillRepository.findOne({ where: { skillId } });
+        if (!skill)
+            throw new common_1.NotFoundException('Skill不存在');
+        if (data.name !== undefined)
+            skill.name = data.name;
+        if (data.agent_type !== undefined)
+            skill.agentType = data.agent_type;
+        if (data.content !== undefined) {
+            skill.content = data.content;
+            skill.version += 1;
+        }
+        if (data.is_active !== undefined)
+            skill.isActive = data.is_active;
+        await this.skillRepository.save(skill);
+        return { id: skill.skillId, version: skill.version };
+    }
 };
 exports.AdminService = AdminService;
 exports.AdminService = AdminService = __decorate([
@@ -345,7 +468,11 @@ exports.AdminService = AdminService = __decorate([
     __param(1, (0, typeorm_1.InjectRepository)(merchant_entity_1.Merchant)),
     __param(2, (0, typeorm_1.InjectRepository)(prompt_template_entity_1.PromptTemplate)),
     __param(3, (0, typeorm_1.InjectRepository)(sensitive_word_entity_1.SensitiveWord)),
+    __param(4, (0, typeorm_1.InjectRepository)(ai_agent_config_entity_1.AiAgentConfig)),
+    __param(5, (0, typeorm_1.InjectRepository)(ai_skill_entity_1.AiSkill)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository])

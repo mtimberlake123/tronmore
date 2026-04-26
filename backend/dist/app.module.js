@@ -9,6 +9,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const path_1 = require("path");
 const auth_module_1 = require("./modules/auth/auth.module");
 const merchant_module_1 = require("./modules/merchant/merchant.module");
 const generator_module_1 = require("./modules/generator/generator.module");
@@ -21,6 +22,7 @@ const admin_module_1 = require("./modules/admin/admin.module");
 const h5_module_1 = require("./modules/h5/h5.module");
 const analytics_module_1 = require("./modules/analytics/analytics.module");
 const ai_module_1 = require("./modules/ai/ai.module");
+const marketing_video_module_1 = require("./modules/marketing-video/marketing-video.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -29,7 +31,7 @@ exports.AppModule = AppModule = __decorate([
         imports: [
             typeorm_1.TypeOrmModule.forRoot({
                 type: 'sqlite',
-                database: process.env.DB_PATH || 'tronmore.db',
+                database: process.env.DB_PATH || (0, path_1.resolve)(process.cwd(), '..', 'tronmore.db'),
                 entities: [__dirname + '/**/*.entity{.ts,.js}'],
                 synchronize: true,
             }),
@@ -45,6 +47,7 @@ exports.AppModule = AppModule = __decorate([
             admin_module_1.AdminModule,
             h5_module_1.H5Module,
             analytics_module_1.AnalyticsModule,
+            marketing_video_module_1.MarketingVideoModule,
         ],
     })
 ], AppModule);

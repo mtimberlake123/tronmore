@@ -35,6 +35,12 @@ let QuotaController = class QuotaController {
             success: true,
         };
     }
+    async getTenantBalance(req) {
+        return {
+            code: 200,
+            data: await this.quotaService.getBalance(req.user),
+        };
+    }
     async allocate(id, body) {
         return {
             code: 200,
@@ -57,6 +63,14 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], QuotaController.prototype, "getBalance", null);
+__decorate([
+    (0, common_1.Get)('quota/balance'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], QuotaController.prototype, "getTenantBalance", null);
 __decorate([
     (0, common_1.Post)('merchants/:id/quota/allocate'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

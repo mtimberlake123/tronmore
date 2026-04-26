@@ -14,8 +14,13 @@ export declare class AdminController {
                 name: string;
                 phone: string;
                 balance: number;
+                company_balance: number;
+                merchant_balance: number;
+                total_remaining: number;
                 total_quota: number;
                 used_quota: number;
+                allocated_quota: number;
+                unallocated_quota: number;
                 status: number;
                 created_at: Date;
                 merchants: number;
@@ -203,5 +208,90 @@ export declare class AdminController {
         from_tenant: string;
         to_tenant: string;
         code: number;
+    }>;
+    getAiAgents(query: {
+        step_key?: string;
+    }): Promise<{
+        code: number;
+        data: {
+            list: {
+                id: string;
+                name: string;
+                step_key: string;
+                model: string;
+                temperature: number;
+                max_iterations: number;
+                system_prompt: string;
+                is_active: boolean;
+                created_at: Date;
+            }[];
+            total: number;
+        };
+    }>;
+    createAiAgent(body: {
+        name: string;
+        step_key: string;
+        model?: string;
+        temperature?: number;
+        max_iterations?: number;
+        system_prompt: string;
+    }): Promise<{
+        code: number;
+        data: {
+            id: string;
+        };
+    }>;
+    updateAiAgent(id: string, body: {
+        name?: string;
+        step_key?: string;
+        model?: string;
+        temperature?: number;
+        max_iterations?: number;
+        system_prompt?: string;
+        is_active?: boolean;
+    }): Promise<{
+        code: number;
+        data: {
+            id: string;
+        };
+    }>;
+    getAiSkills(query: {
+        agent_type?: string;
+    }): Promise<{
+        code: number;
+        data: {
+            list: {
+                id: string;
+                name: string;
+                agent_type: string;
+                content: string;
+                version: number;
+                is_active: boolean;
+                created_at: Date;
+            }[];
+            total: number;
+        };
+    }>;
+    createAiSkill(body: {
+        name: string;
+        agent_type: string;
+        content: string;
+    }): Promise<{
+        code: number;
+        data: {
+            id: string;
+        };
+    }>;
+    updateAiSkill(id: string, body: {
+        name?: string;
+        agent_type?: string;
+        content?: string;
+        is_active?: boolean;
+    }): Promise<{
+        code: number;
+        data: {
+            id: string;
+            version: number;
+        };
     }>;
 }

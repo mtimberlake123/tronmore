@@ -23,7 +23,7 @@ __decorate([
     __metadata("design:type", String)
 ], Poster.prototype, "posterId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'template_id' }),
+    (0, typeorm_1.Column)({ name: 'template_id', nullable: true }),
     __metadata("design:type", Number)
 ], Poster.prototype, "templateId", void 0);
 __decorate([
@@ -35,7 +35,7 @@ __decorate([
     __metadata("design:type", String)
 ], Poster.prototype, "tenantId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'image_url' }),
+    (0, typeorm_1.Column)({ name: 'image_url', nullable: true, type: 'text' }),
     __metadata("design:type", String)
 ], Poster.prototype, "imageUrl", void 0);
 __decorate([

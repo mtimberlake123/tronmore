@@ -11,9 +11,11 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.H5Controller = void 0;
 const common_1 = require("@nestjs/common");
+const express_1 = require("express");
 const h5_service_1 = require("./h5.service");
 let H5Controller = class H5Controller {
     constructor(h5Service) {
@@ -27,11 +29,48 @@ let H5Controller = class H5Controller {
         };
     }
     async generate(body) {
-        const data = await this.h5Service.generateContent(body.merchant_id, body.type);
+        const data = await this.h5Service.generateContent(body.merchant_id, body.type, {
+            personaSeed: body.visitor_id,
+            variationSeed: body.generation_id,
+            recentOutputs: body.recent_outputs,
+        });
         return {
             code: 200,
             data,
         };
+    }
+    async generateStream(body, res) {
+        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders?.();
+        const send = (event, data) => {
+            res.write(`event: ${event}\n`);
+            res.write(`data: ${JSON.stringify(data)}\n\n`);
+        };
+        try {
+            for await (const chunk of this.h5Service.generateContentStream(body.merchant_id, body.type, {
+                personaSeed: body.visitor_id,
+                variationSeed: body.generation_id,
+                recentOutputs: body.recent_outputs,
+            })) {
+                send(chunk.event, chunk.data);
+            }
+        }
+        catch (error) {
+            const response = typeof error.getResponse === 'function' ? error.getResponse() : null;
+            const message = typeof response === 'object' && response?.message
+                ? response.message
+                : error.message || '生成失败';
+            send('error', {
+                message,
+                statusCode: error.status || response?.statusCode,
+                code: message.includes('额度') ? '4001' : undefined,
+            });
+        }
+        finally {
+            res.end();
+        }
     }
     async track(body) {
         await this.h5Service.track(body);
@@ -63,6 +102,14 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], H5Controller.prototype, "generate", null);
+__decorate([
+    (0, common_1.Post)('generate-stream'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, typeof (_a = typeof express_1.Response !== "undefined" && express_1.Response) === "function" ? _a : Object]),
+    __metadata("design:returntype", Promise)
+], H5Controller.prototype, "generateStream", null);
 __decorate([
     (0, common_1.Post)('track'),
     __param(0, (0, common_1.Body)()),

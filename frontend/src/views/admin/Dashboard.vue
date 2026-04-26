@@ -214,7 +214,7 @@ import { admin, quota } from '@/api'
 
 const timeRange = ref('7d')
 const showSettings = ref(false)
-const apiKeyForm = ref(localStorage.getItem('apiKey') || 'sk-MtssNtmuPIELmwWO5wY8bK3TOfGGofGjmOwmxCQEOXqZCVN1')
+const apiKeyForm = ref(localStorage.getItem('apiKey') || '')
 
 const saveApiKey = () => {
   localStorage.setItem('apiKey', apiKeyForm.value)

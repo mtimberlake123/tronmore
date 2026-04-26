@@ -40,7 +40,7 @@ export class GeneratorService {
 
     let generatedContent: any;
     try {
-      generatedContent = await this.callAIService(prompt);
+      generatedContent = await this.callAIService(prompt, type);
     } catch (error) {
       console.error('AI服务调用失败:', error);
       throw new BadRequestException('AI服务异常', '4002');
@@ -109,7 +109,7 @@ export class GeneratorService {
 
     let generatedContent: { text: string };
     try {
-      generatedContent = await this.callAIService(prompt);
+      generatedContent = await this.callAIService(prompt, 'review');
     } catch (error) {
       console.error('AI预览生成失败:', error);
       throw new BadRequestException('AI服务异常', '4002');
@@ -128,8 +128,8 @@ export class GeneratorService {
     };
   }
 
-  private async callAIService(prompt: string): Promise<{ text: string }> {
-    const text = await this.aiService.generate(prompt);
+  private async callAIService(prompt: string, type: string): Promise<{ text: string }> {
+    const text = await this.aiService.generate(prompt, type === 'note' ? 260 : 520);
     return { text };
   }
 

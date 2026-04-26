@@ -3,12 +3,78 @@ import { PosterTemplate } from './poster-template.entity';
 import { Poster } from './poster.entity';
 import { Draft } from './draft.entity';
 import { Merchant } from '../merchant/merchant.entity';
+import { AiService } from '../ai/ai.service';
+import { Tenant } from '../auth/tenant.entity';
 export declare class FactoryService {
     private templateRepository;
     private posterRepository;
     private draftRepository;
     private merchantRepository;
-    constructor(templateRepository: Repository<PosterTemplate>, posterRepository: Repository<Poster>, draftRepository: Repository<Draft>, merchantRepository: Repository<Merchant>);
+    private tenantRepository;
+    private aiService;
+    constructor(templateRepository: Repository<PosterTemplate>, posterRepository: Repository<Poster>, draftRepository: Repository<Draft>, merchantRepository: Repository<Merchant>, tenantRepository: Repository<Tenant>, aiService: AiService);
+    getFactoryModules(): Promise<{
+        key: string;
+        name: string;
+        description: string;
+        mediaType: string;
+        goal: string;
+        supportedRatios: string[];
+        cost: number;
+    }[]>;
+    createFactoryGeneration(data: {
+        merchant_id: string;
+        module_key: string;
+        prompt: string;
+        ratio: string;
+        style: string;
+        reference_images?: string[];
+        tenantId: string;
+    }): Promise<{
+        id: string;
+        status: string;
+        cost: number;
+        message: string;
+    }>;
+    getFactoryGeneration(id: string, tenantId: string): Promise<{
+        id: string;
+        merchant_id: string;
+        status: string;
+        image_url: string;
+        module_key: any;
+        module_name: any;
+        prompt: any;
+        ratio: any;
+        style: any;
+        reference_images: any;
+        ai_text: any;
+        error_message: any;
+        created_at: Date;
+    }>;
+    getFactoryHistory(params: {
+        tenantId: string;
+        module_key?: string;
+        merchant_id?: string;
+        page?: number;
+        page_size?: number;
+    }): Promise<{
+        list: {
+            id: string;
+            merchant_id: string;
+            status: string;
+            image_url: string;
+            module_key: any;
+            module_name: any;
+            prompt: any;
+            ratio: any;
+            style: any;
+            reference_images: any;
+            ai_text: any;
+            error_message: any;
+            created_at: Date;
+        }[];
+        total: number;
+    }>;
     getTemplates(params: {
         category?: string;
         scene?: string;
@@ -95,4 +161,12 @@ export declare class FactoryService {
         }[];
     }>;
     private generatePosterImage;
+    private runFactoryGeneration;
+    private refundTenantQuotaIfNeeded;
+    private buildFactoryPrompt;
+    private buildImagePrompt;
+    private getImageSize;
+    private getFirstReferenceImage;
+    private normalizeImageToBase64;
+    private formatFactoryPoster;
 }

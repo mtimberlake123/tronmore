@@ -6,9 +6,11 @@ import { Tenant } from '../auth/tenant.entity';
 import { Merchant } from '../merchant/merchant.entity';
 import { PromptTemplate } from './prompt-template.entity';
 import { SensitiveWord } from './sensitive-word.entity';
+import { AiAgentConfig } from './ai-agent-config.entity';
+import { AiSkill } from './ai-skill.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Tenant, Merchant, PromptTemplate, SensitiveWord])],
+  imports: [TypeOrmModule.forFeature([Tenant, Merchant, PromptTemplate, SensitiveWord, AiAgentConfig, AiSkill])],
   controllers: [AdminController],
   providers: [AdminService],
   exports: [AdminService],

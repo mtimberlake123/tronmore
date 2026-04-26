@@ -35,6 +35,10 @@
       </section>
 
       <main class="action-panel">
+        <div class="panel-title">
+          <strong>选择要做的事</strong>
+          <span>生成内容或领取商家福利</span>
+        </div>
         <div class="action-grid">
           <button
             v-for="item in actionCards"
@@ -116,7 +120,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { h5 } from '@/api'
 import {
   ArrowLeft,
@@ -127,6 +131,7 @@ import {
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
+const router = useRouter()
 
 const loading = ref(true)
 const generating = ref(false)
@@ -141,6 +146,7 @@ const config = reactive({
   dy_url: '',
   wx_qr: '',
   address: '',
+  product_images: [],
 })
 const result = ref(null)
 const showJumpDialog = ref(false)
@@ -160,11 +166,12 @@ const heroStyle = computed(() => {
 })
 
 const actionCards = computed(() => [
-  {
+  ...[
+    {
     key: 'xhs-note',
     mark: '小红书',
-    title: '小红书发笔记',
-    desc: generating.value && lastGenerateType.value === 'note' ? '正在生成内容' : 'AI帮你速写，随意改',
+    title: '小红书笔记',
+    desc: '生成可发布笔记',
     tone: 'red',
     type: 'note',
     generating: true,
@@ -172,28 +179,29 @@ const actionCards = computed(() => [
   {
     key: 'dianping-review',
     mark: '点评',
-    title: '大众发点评',
-    desc: generating.value && lastGenerateType.value === 'review' ? '正在生成内容' : 'AI帮你速写笔记',
+    title: '大众点评',
+    desc: generating.value && lastGenerateType.value === 'review' ? '正在生成' : '生成点评文案',
     tone: 'orange',
     type: 'review',
     generating: true,
   },
-  {
+  ],
+  ...(config.dy_url ? [{
     key: 'douyin-follow',
     mark: '抖音',
-    title: '关注商家抖音',
-    desc: '关注抖音赠好礼',
+    title: '商家抖音',
+    desc: '查看商家主页',
     tone: 'black',
     platform: 'douyin',
-  },
-  {
+  }] : []),
+  ...(config.wx_qr ? [{
     key: 'wechat-add',
     mark: '微信',
-    title: '添加商家微信',
-    desc: '添加微信领取好礼',
-    tone: 'orange',
+    title: '商家微信',
+    desc: '添加微信咨询',
+    tone: 'green',
     platform: 'wechat',
-  },
+  }] : []),
 ])
 
 const contentTypeLabel = computed(() => (
@@ -230,6 +238,16 @@ onMounted(async () => {
 
 const handleAction = async (item) => {
   if (item.type) {
+    if (item.type === 'note') {
+      router.push({
+        path: `/h5/${config.merchant_id}/note`,
+        query: {
+          qr_id: route.query.qr_id,
+          source: route.query.source || '',
+        },
+      })
+      return
+    }
     await generateContent(item.type)
     return
   }
@@ -515,23 +533,43 @@ const showToast = (message, type = 'success') => {
   z-index: 2;
   margin-top: -24px;
   min-height: 58vh;
-  padding: 34px 28px 28px;
+  padding: 28px 22px 28px;
   background: #fff;
   border-radius: 36px 36px 0 0;
+}
+
+.panel-title {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.panel-title strong {
+  color: #111;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.panel-title span {
+  color: #999;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .action-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px 20px;
+  gap: 14px;
 }
 
 .action-card {
-  min-height: 178px;
-  padding: 28px 24px 22px;
+  min-height: 146px;
+  padding: 18px;
   border: none;
-  border-radius: 24px;
-  background: #f6f6f6;
+  border-radius: 22px;
+  background: #f8f8f8;
   text-align: left;
   display: flex;
   flex-direction: column;
@@ -574,10 +612,14 @@ const showToast = (message, type = 'success') => {
   background: #050505;
 }
 
+.app-mark.green {
+  background: #10b981;
+}
+
 .action-card strong {
   margin-top: auto;
   color: #111;
-  font-size: clamp(20px, 5.4vw, 28px);
+  font-size: clamp(20px, 5vw, 25px);
   line-height: 1.12;
   font-weight: 800;
 }

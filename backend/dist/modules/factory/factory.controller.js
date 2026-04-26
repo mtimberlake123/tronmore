@@ -21,6 +21,36 @@ let FactoryController = class FactoryController {
     constructor(factoryService) {
         this.factoryService = factoryService;
     }
+    async getFactoryModules() {
+        return {
+            code: 200,
+            data: await this.factoryService.getFactoryModules(),
+        };
+    }
+    async createFactoryGeneration(body, user) {
+        return {
+            code: 200,
+            data: await this.factoryService.createFactoryGeneration({
+                ...body,
+                tenantId: user.tenantId,
+            }),
+        };
+    }
+    async getFactoryGeneration(id, user) {
+        return {
+            code: 200,
+            data: await this.factoryService.getFactoryGeneration(id, user.tenantId),
+        };
+    }
+    async getFactoryHistory(query, user) {
+        return {
+            code: 200,
+            data: await this.factoryService.getFactoryHistory({
+                ...query,
+                tenantId: user.tenantId,
+            }),
+        };
+    }
     async getTemplates(query) {
         return {
             code: 200,
@@ -79,6 +109,36 @@ let FactoryController = class FactoryController {
     }
 };
 exports.FactoryController = FactoryController;
+__decorate([
+    (0, common_1.Get)('factory/modules'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], FactoryController.prototype, "getFactoryModules", null);
+__decorate([
+    (0, common_1.Post)('factory/generations'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], FactoryController.prototype, "createFactoryGeneration", null);
+__decorate([
+    (0, common_1.Get)('factory/generations/:id'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], FactoryController.prototype, "getFactoryGeneration", null);
+__decorate([
+    (0, common_1.Get)('factory/history'),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], FactoryController.prototype, "getFactoryHistory", null);
 __decorate([
     (0, common_1.Get)('poster/templates'),
     __param(0, (0, common_1.Query)()),

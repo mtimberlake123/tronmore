@@ -13,10 +13,27 @@ export declare class AuthController {
             company_id: string;
             company_name: string;
             balance: number;
+            is_new: boolean;
         };
     }>;
     loginBySms(body: {
         phone: string;
+        code: string;
+        agree_terms: boolean;
+    }): Promise<{
+        code: number;
+        data: {
+            token: string;
+            company_id: string;
+            company_name: string;
+            balance: number;
+            is_new: boolean;
+        };
+    }>;
+    register(body: {
+        company_name: string;
+        phone: string;
+        password: string;
         code: string;
         agree_terms: boolean;
     }): Promise<{
