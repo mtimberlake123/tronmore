@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import axios from 'axios';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { Tenant } from '../auth/tenant.entity';
@@ -8,6 +9,7 @@ import { PromptTemplate } from './prompt-template.entity';
 import { SensitiveWord } from './sensitive-word.entity';
 import { AiAgentConfig } from './ai-agent-config.entity';
 import { AiSkill } from './ai-skill.entity';
+import { SystemSetting } from './system-setting.entity';
 
 @Injectable()
 export class AdminService {
@@ -24,6 +26,8 @@ export class AdminService {
     private agentConfigRepository: Repository<AiAgentConfig>,
     @InjectRepository(AiSkill)
     private skillRepository: Repository<AiSkill>,
+    @InjectRepository(SystemSetting)
+    private settingRepository: Repository<SystemSetting>,
   ) {}
 
   /**
@@ -525,6 +529,104 @@ export class AdminService {
       })),
       total: list.length,
     };
+  }
+
+  async getAiProviderConfig() {
+    const config = await this.getAiConfigMap();
+    const apiKey = config.get('ai.api_key') || process.env.AI_API_KEY || '';
+
+    return {
+      base_url: config.get('ai.base_url') || process.env.AI_BASE_URL || 'https://api.chatfire.site/v1',
+      model: config.get('ai.model') || process.env.AI_MODEL || 'gpt-5.4',
+      image_model: config.get('ai.image_model') || process.env.AI_IMAGE_MODEL || 'gpt-image-2',
+      temperature: Number(config.get('ai.temperature') || process.env.AI_TEMPERATURE || 0.7),
+      has_api_key: Boolean(apiKey),
+      api_key_masked: this.maskApiKey(apiKey),
+    };
+  }
+
+  async updateAiProviderConfig(data: {
+    base_url?: string;
+    model?: string;
+    image_model?: string;
+    temperature?: number;
+    api_key?: string;
+  }) {
+    await this.upsertSetting('ai.base_url', data.base_url || 'https://api.chatfire.site/v1', 'AI接口地址');
+    await this.upsertSetting('ai.model', data.model || 'gpt-5.4', '文本生成模型');
+    await this.upsertSetting('ai.image_model', data.image_model || 'gpt-image-2', '图片生成模型');
+    await this.upsertSetting('ai.temperature', String(data.temperature ?? 0.7), '生成温度');
+
+    if (data.api_key && data.api_key.trim()) {
+      await this.upsertSetting('ai.api_key', data.api_key.trim(), 'AI接口密钥');
+    }
+
+    return this.getAiProviderConfig();
+  }
+
+  async getAiProviderBalance() {
+    const config = await this.getAiProviderConfigWithKey();
+    if (!config.apiKey) {
+      return {
+        success: false,
+        message: '请先在后台配置 AI API Key',
+        data: {
+          configured: false,
+          availableBalance: '--',
+          quotaBalance: '--',
+        },
+      };
+    }
+
+    const response = await axios.get(`${config.baseUrl}/chatfire/balance`, {
+      headers: { Authorization: `Bearer ${config.apiKey}` },
+      timeout: 30000,
+    });
+
+    const data = response.data;
+    if (data?.data?.availableBalance !== undefined) {
+      data.data.availableBalance = (data.data.availableBalance / 500000).toFixed(2);
+      data.data.quotaBalance = ((data.data.quotaBalance || 0) / 500000).toFixed(2);
+    }
+    return data;
+  }
+
+  private async getAiConfigMap() {
+    const rows = await this.settingRepository.find({
+      where: [
+        { key: 'ai.base_url' },
+        { key: 'ai.model' },
+        { key: 'ai.image_model' },
+        { key: 'ai.temperature' },
+        { key: 'ai.api_key' },
+      ],
+    });
+    return new Map(rows.map(item => [item.key, item.value]));
+  }
+
+  private async getAiProviderConfigWithKey() {
+    const config = await this.getAiConfigMap();
+    return {
+      baseUrl: config.get('ai.base_url') || process.env.AI_BASE_URL || 'https://api.chatfire.site/v1',
+      apiKey: config.get('ai.api_key') || process.env.AI_API_KEY || '',
+    };
+  }
+
+  private async upsertSetting(key: string, value: string, remark: string) {
+    let setting = await this.settingRepository.findOne({ where: { key } });
+    if (!setting) {
+      setting = this.settingRepository.create({ key, value, remark });
+    } else {
+      setting.value = value;
+      setting.remark = remark;
+    }
+    await this.settingRepository.save(setting);
+  }
+
+  private maskApiKey(apiKey: string) {
+    if (!apiKey) return '';
+    if (apiKey.length <= 12) return '已配置';
+    return `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}`;
   }
 
   async createAiAgent(data: {

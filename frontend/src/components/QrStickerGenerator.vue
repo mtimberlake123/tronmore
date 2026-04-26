@@ -1,41 +1,42 @@
 <template>
   <div class="qr-sticker-generator">
     <div class="generator-layout">
-      <!-- 左侧预览 -->
       <div class="preview-section">
         <div class="preview-title">预览</div>
         <div class="sticker-preview" :class="stickerShape">
           <div class="sticker-content" :style="stickerStyle">
-            <div class="sticker-bg" :style="bgStyle"></div>
             <div class="sticker-inner">
               <div class="merchant-logo" v-if="options.showLogo && merchantLogo">
-                <img :src="merchantLogo" alt="logo" />
+                <img :src="merchantLogo" alt="商家标识" />
               </div>
               <div class="qr-wrapper" :style="qrWrapperStyle">
-                <img :src="qrImage" alt="qr" class="qr-image" />
+                <img :src="qrImage" alt="二维码" class="qr-image" />
               </div>
-              <div class="merchant-name" v-if="options.showName" :style="{ color: options.themeColor }">{{ merchantName }}</div>
-              <div class="prompt-text" v-if="options.showPrompt" :style="{ color: options.themeColor }">{{ options.promptText }}</div>
+              <div class="merchant-name" v-if="options.showName" :style="{ color: options.themeColor }">
+                {{ merchantName }}
+              </div>
+              <div class="prompt-text" v-if="options.showPrompt" :style="{ color: options.themeColor }">
+                {{ options.promptText }}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 右侧设置 -->
       <div class="settings-section">
         <div class="settings-title">贴纸设置</div>
 
         <div class="setting-group">
-          <div class="setting-label">贴纸形状</div>
-          <div class="shape-options">
+          <div class="setting-label">贴纸比例</div>
+          <div class="ratio-options">
             <div
-              v-for="shape in shapeOptions"
-              :key="shape.value"
-              class="shape-option"
-              :class="{ active: options.shape === shape.value }"
-              @click="options.shape = shape.value"
+              v-for="ratio in ratioOptions"
+              :key="ratio.value"
+              class="ratio-option"
+              :class="{ active: options.ratio === ratio.value }"
+              @click="options.ratio = ratio.value"
             >
-              {{ shape.label }}
+              {{ ratio.label }}
             </div>
           </div>
         </div>
@@ -73,7 +74,7 @@
         <div class="setting-group">
           <div class="setting-label">显示内容</div>
           <div class="checkbox-group">
-            <el-checkbox v-model="options.showLogo">商家Logo</el-checkbox>
+            <el-checkbox v-model="options.showLogo">商家标识</el-checkbox>
             <el-checkbox v-model="options.showName">商家名称</el-checkbox>
             <el-checkbox v-model="options.showPrompt">提示语</el-checkbox>
           </div>
@@ -84,23 +85,8 @@
           <el-input v-model="options.promptText" size="small" class="prompt-input" />
         </div>
 
-        <div class="setting-group">
-          <div class="setting-label">尺寸比例</div>
-          <div class="ratio-options">
-            <div
-              v-for="ratio in ratioOptions"
-              :key="ratio.value"
-              class="ratio-option"
-              :class="{ active: options.ratio === ratio.value }"
-              @click="options.ratio = ratio.value"
-            >
-              {{ ratio.label }}
-            </div>
-          </div>
-        </div>
-
         <div class="action-buttons">
-          <el-button @click="downloadSticker" :disabled="!qrImage">下载贴纸</el-button>
+          <el-button @click="downloadSticker" :disabled="!qrImage" :loading="generating">下载贴纸</el-button>
         </div>
       </div>
     </div>
@@ -128,14 +114,8 @@ const options = reactive({
   showName: true,
   showPrompt: true,
   promptText: '扫一扫，即可发布评价/笔记',
-  ratio: '4:3'
+  ratio: '3:4'
 })
-
-const shapeOptions = [
-  { label: '圆角矩形', value: 'rounded_rect' },
-  { label: '圆形', value: 'circle' },
-  { label: '正方形', value: 'square' }
-]
 
 const bgColorOptions = [
   { value: '#ffffff' },
@@ -156,37 +136,37 @@ const themeColorOptions = [
 ]
 
 const ratioOptions = [
-  { label: '4:3', value: '4:3' },
   { label: '1:1', value: '1:1' },
-  { label: '3:4', value: '3:4' }
+  { label: '3:4', value: '3:4' },
+  { label: '9:16', value: '9:16' }
 ]
 
-const stickerShape = computed(() => {
-  return {
-    'shape-rounded': options.shape === 'rounded_rect',
-    'shape-circle': options.shape === 'circle',
-    'shape-square': options.shape === 'square'
-  }
-})
+const validRatios = ratioOptions.map(item => item.value)
+
+const stickerShape = computed(() => ({
+  'shape-rounded': true
+}))
 
 const stickerStyle = computed(() => {
-  const padding = options.shape === 'circle' ? '20px' : '24px'
-  return {
-    padding,
-    background: options.bgColor
-  }
-})
+  const { width, height } = getPreviewSize()
+  const metrics = getStickerMetrics({
+    width,
+    height,
+    hasLogo: Boolean(options.showLogo && props.merchantLogo)
+  })
 
-const bgStyle = computed(() => {
-  if (options.shape === 'circle') {
-    return {
-      position: 'absolute',
-      inset: '8px',
-      borderRadius: '50%',
-      background: options.bgColor
-    }
+  return {
+    background: options.bgColor,
+    width: `${width}px`,
+    height: `${height}px`,
+    '--sticker-pad': `${metrics.padding}px`,
+    '--sticker-gap': `${metrics.gap}px`,
+    '--logo-size': `${metrics.logoSize}px`,
+    '--qr-box': `${metrics.qrBoxSize}px`,
+    '--qr-pad': `${metrics.qrPadding}px`,
+    '--name-font': `${metrics.nameFont}px`,
+    '--prompt-font': `${metrics.promptFont}px`
   }
-  return {}
 })
 
 const qrWrapperStyle = computed(() => ({
@@ -217,94 +197,189 @@ watch([() => options.shape, () => options.ratio, () => options.showLogo], () => 
   generateQrcode()
 })
 
-const downloadSticker = () => {
+const downloadSticker = async () => {
   if (!qrImage.value) return
 
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
-  const ratioParts = options.ratio.split(':')
-  const ratioW = parseInt(ratioParts[0])
-  const ratioH = parseInt(ratioParts[1])
+  if (!ctx) return
 
-  let baseWidth = 400
-  let baseHeight = Math.round(baseWidth * ratioH / ratioW)
+  const { width, height } = getExportSize()
+  canvas.width = width
+  canvas.height = height
 
-  if (options.shape === 'circle') {
-    baseWidth = 360
-    baseHeight = 360
-  }
-
-  canvas.width = baseWidth
-  canvas.height = baseHeight + 120
-
-  // Background
+  ctx.clearRect(0, 0, width, height)
   ctx.fillStyle = options.bgColor
+
   if (options.shape === 'circle') {
     ctx.beginPath()
-    ctx.arc(baseWidth / 2, baseHeight / 2, Math.min(baseWidth, baseHeight) / 2, 0, Math.PI * 2)
+    ctx.arc(width / 2, height / 2, Math.min(width, height) / 2, 0, Math.PI * 2)
     ctx.fill()
+    ctx.clip()
   } else if (options.shape === 'rounded_rect') {
-    roundRect(ctx, 0, 0, baseWidth, baseHeight, 24)
+    roundRect(ctx, 0, 0, width, height, Math.round(Math.min(width, height) * 0.08))
     ctx.fill()
+    ctx.clip()
   } else {
-    ctx.fillRect(0, 0, baseWidth, baseHeight)
+    ctx.fillRect(0, 0, width, height)
   }
 
-  // QR Code
-  const qrSize = options.shape === 'circle' ? baseWidth - 80 : baseWidth - 60
-  const qrY = options.shape === 'circle' ? 40 : 30
+  try {
+    const qrImg = await loadImage(qrImage.value)
+    const logoImg = options.showLogo && props.merchantLogo
+      ? await loadImage(props.merchantLogo).catch(() => null)
+      : null
 
-  const qrImg = new Image()
-  qrImg.crossOrigin = 'anonymous'
-  qrImg.onload = () => {
-    ctx.drawImage(qrImg, (baseWidth - qrSize) / 2, qrY, qrSize, qrSize)
+    drawStickerContent(ctx, { width, height, qrImg, logoImg })
 
-    // Merchant Name
-    if (options.showName && props.merchantName) {
-      ctx.fillStyle = '#333333'
-      ctx.font = 'bold 24px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText(props.merchantName, baseWidth / 2, baseHeight + 30)
-    }
-
-    // Prompt Text
-    if (options.showPrompt && options.promptText) {
-      ctx.fillStyle = '#666666'
-      ctx.font = '14px sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText(options.promptText, baseWidth / 2, baseHeight + 60)
-    }
-
-    // Logo
-    if (options.showLogo && props.merchantLogo) {
-      const logoSize = 50
-      const logoX = baseWidth / 2 - logoSize / 2
-      const logoY = qrY + qrSize - logoSize / 2 - 10
-
-      ctx.save()
-      ctx.beginPath()
-      ctx.arc(baseWidth / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2)
-      ctx.clip()
-      const logoImg = new Image()
-      logoImg.crossOrigin = 'anonymous'
-      logoImg.onload = () => {
-        ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize)
-        ctx.restore()
-        downloadCanvas()
-      }
-      logoImg.src = props.merchantLogo
-    } else {
-      downloadCanvas()
-    }
-
-    function downloadCanvas() {
-      const link = document.createElement('a')
-      link.download = `贴纸-${props.merchantName || '商家'}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
-    }
+    const link = document.createElement('a')
+    link.download = `贴纸-${props.merchantName || '商家'}-${options.shape === 'circle' ? '1:1' : options.ratio}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  } catch (e) {
+    console.error(e)
   }
-  qrImg.src = qrImage.value
+}
+
+function getRatioParts() {
+  if (!validRatios.includes(options.ratio)) {
+    options.ratio = '1:1'
+  }
+  const [rawW, rawH] = String(options.ratio || '1:1').split(':')
+  const w = Number.parseInt(rawW, 10) || 1
+  const h = Number.parseInt(rawH, 10) || 1
+  return { w, h }
+}
+
+function getExportSize() {
+  if (options.shape === 'circle') {
+    return { width: 1200, height: 1200 }
+  }
+
+  const ratio = getRatioParts()
+  if (ratio.w >= ratio.h) {
+    return { width: 1200, height: Math.round(1200 * ratio.h / ratio.w) }
+  }
+  return { width: Math.round(1200 * ratio.w / ratio.h), height: 1200 }
+}
+
+function getPreviewSize() {
+  if (options.shape === 'circle' || options.shape === 'square') {
+    return { width: 280, height: 280 }
+  }
+
+  const ratio = getRatioParts()
+  if (ratio.w >= ratio.h) {
+    return { width: 280, height: Math.round(280 * ratio.h / ratio.w) }
+  }
+  return { width: 280, height: Math.round(280 * ratio.h / ratio.w) }
+}
+
+function getStickerMetrics({ width, height, hasLogo }) {
+  const minSide = Math.min(width, height)
+  const padding = Math.round(minSide * (options.shape === 'circle' ? 0.12 : 0.08))
+  const gap = Math.round(minSide * 0.035)
+  const logoSize = hasLogo ? Math.round(minSide * 0.13) : 0
+  const nameFont = Math.round(minSide * 0.055)
+  const promptFont = Math.round(minSide * 0.034)
+  const nameHeight = options.showName && props.merchantName ? Math.round(nameFont * 1.35) : 0
+  const promptHeight = options.showPrompt && options.promptText ? Math.round(promptFont * 1.35) : 0
+  const textGap = nameHeight && promptHeight ? Math.round(gap * 0.45) : 0
+  const textHeight = nameHeight + promptHeight + textGap
+  const logoBlock = logoSize ? logoSize + gap : 0
+  const availableQrHeight = height - padding * 2 - logoBlock - textHeight - gap
+  const qrBoxSize = Math.max(
+    Math.round(minSide * 0.32),
+    Math.min(width - padding * 2, availableQrHeight)
+  )
+  const qrPadding = Math.round(qrBoxSize * 0.075)
+
+  return {
+    padding,
+    gap,
+    logoSize,
+    nameFont,
+    promptFont,
+    qrBoxSize,
+    qrPadding
+  }
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = src
+  })
+}
+
+function drawStickerContent(ctx, { width, height, qrImg, logoImg }) {
+  const metrics = getStickerMetrics({ width, height, hasLogo: Boolean(logoImg) })
+  const { padding, gap, logoSize, nameFont, promptFont, qrBoxSize, qrPadding } = metrics
+  const nameHeight = options.showName && props.merchantName ? Math.round(nameFont * 1.35) : 0
+  const promptHeight = options.showPrompt && options.promptText ? Math.round(promptFont * 1.35) : 0
+  const textGap = nameHeight && promptHeight ? Math.round(gap * 0.45) : 0
+  const textHeight = nameHeight + promptHeight + textGap
+  const logoBlock = logoSize ? logoSize + gap : 0
+
+  let y = Math.max(padding, Math.round((height - logoBlock - qrBoxSize - textHeight - gap) / 2))
+
+  if (logoImg) {
+    drawRoundedImage(ctx, logoImg, (width - logoSize) / 2, y, logoSize, logoSize, Math.round(logoSize * 0.2))
+    y += logoSize + gap
+  }
+
+  const qrX = (width - qrBoxSize) / 2
+  const qrRadius = Math.round(qrBoxSize * 0.06)
+  ctx.fillStyle = '#ffffff'
+  roundRect(ctx, qrX, y, qrBoxSize, qrBoxSize, qrRadius)
+  ctx.fill()
+
+  ctx.drawImage(qrImg, qrX + qrPadding, y + qrPadding, qrBoxSize - qrPadding * 2, qrBoxSize - qrPadding * 2)
+  y += qrBoxSize + gap
+
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
+
+  if (options.showName && props.merchantName) {
+    ctx.fillStyle = options.themeColor || '#111111'
+    ctx.font = `700 ${nameFont}px sans-serif`
+    drawSingleLineText(ctx, props.merchantName, width / 2, y, width - padding * 2)
+    y += nameHeight
+  }
+
+  if (options.showPrompt && options.promptText) {
+    if (nameHeight) y += textGap
+    ctx.fillStyle = options.themeColor || '#555555'
+    ctx.globalAlpha = 0.78
+    ctx.font = `400 ${promptFont}px sans-serif`
+    drawSingleLineText(ctx, options.promptText, width / 2, y, width - padding * 2)
+    ctx.globalAlpha = 1
+  }
+}
+
+function drawRoundedImage(ctx, img, x, y, width, height, radius) {
+  ctx.save()
+  roundRect(ctx, x, y, width, height, radius)
+  ctx.clip()
+  ctx.drawImage(img, x, y, width, height)
+  ctx.restore()
+}
+
+function drawSingleLineText(ctx, text, x, y, maxWidth) {
+  const content = String(text || '')
+  if (ctx.measureText(content).width <= maxWidth) {
+    ctx.fillText(content, x, y)
+    return
+  }
+
+  let output = content
+  while (output.length > 1 && ctx.measureText(`${output}...`).width > maxWidth) {
+    output = output.slice(0, -1)
+  }
+  ctx.fillText(`${output}...`, x, y)
 }
 
 function roundRect(ctx, x, y, width, height, radius) {
@@ -346,6 +421,7 @@ function roundRect(ctx, x, y, width, height, radius) {
 
 .sticker-preview {
   width: 320px;
+  min-height: 380px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 16px;
   display: flex;
@@ -354,44 +430,42 @@ function roundRect(ctx, x, y, width, height, radius) {
   padding: 40px 20px;
 }
 
-.sticker-preview.shape-rounded .sticker-content {
-  border-radius: 24px;
-  overflow: hidden;
-}
-
-.sticker-preview.shape-circle .sticker-content {
-  width: 280px;
-  height: 280px;
-  border-radius: 50%;
+.sticker-content {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
+  padding: var(--sticker-pad);
+  overflow: hidden;
+}
+
+.sticker-preview.shape-rounded .sticker-content {
+  border-radius: 24px;
+}
+
+.sticker-preview.shape-circle .sticker-content {
+  border-radius: 50%;
 }
 
 .sticker-preview.shape-square .sticker-content {
   border-radius: 8px;
-  overflow: hidden;
 }
 
 .sticker-inner {
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  position: relative;
-  z-index: 1;
-}
-
-.sticker-bg {
-  display: none;
+  justify-content: center;
+  gap: var(--sticker-gap);
 }
 
 .merchant-logo {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: var(--logo-size);
+  height: var(--logo-size);
+  border-radius: max(6px, calc(var(--logo-size) * 0.2));
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .merchant-logo img {
@@ -402,36 +476,45 @@ function roundRect(ctx, x, y, width, height, radius) {
 
 .qr-wrapper {
   background: #ffffff;
-  padding: 12px;
+  width: var(--qr-box);
+  height: var(--qr-box);
+  padding: var(--qr-pad);
+  box-sizing: border-box;
   border-radius: 8px;
+  flex-shrink: 0;
 }
 
 .qr-image {
-  width: 160px;
-  height: 160px;
+  width: 100%;
+  height: 100%;
   display: block;
 }
 
 .merchant-name {
-  font-size: 18px;
+  max-width: 100%;
+  font-size: var(--name-font);
   font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .prompt-text {
-  font-size: 12px;
+  max-width: 100%;
+  font-size: var(--prompt-font);
+  line-height: 1.2;
   text-align: center;
+  opacity: 0.78;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settings-section {
   flex: 1;
   max-width: 400px;
-}
-
-.settings-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #ffffff;
-  margin-bottom: 24px;
 }
 
 .setting-group {

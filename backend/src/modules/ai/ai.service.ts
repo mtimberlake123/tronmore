@@ -1,37 +1,44 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import axios from 'axios';
 import { Readable } from 'stream';
+import { Repository } from 'typeorm';
+import { SystemSetting } from '../admin/system-setting.entity';
+
+type AiRuntimeConfig = {
+  baseURL: string;
+  model: string;
+  imageModel: string;
+  appKey: string;
+  temperature: number;
+};
 
 @Injectable()
 export class AiService {
-  private readonly baseURL = process.env.AI_BASE_URL || 'https://api.chatfire.site/v1';
-  private readonly model = process.env.AI_MODEL || 'gpt-5.4';
-  private readonly appKey = process.env.AI_API_KEY || '';
-  private readonly temperature = Number(process.env.AI_TEMPERATURE || 0.7);
+  constructor(
+    @InjectRepository(SystemSetting)
+    private settingRepository: Repository<SystemSetting>,
+  ) {}
 
   async generate(prompt: string, maxTokens: number = 1000): Promise<string> {
-    if (!this.appKey) {
+    const config = await this.getRuntimeConfig();
+    if (!config.appKey) {
       throw new Error('AI_API_KEY 未配置');
     }
 
     try {
       const response = await axios.post(
-        `${this.baseURL}/chat/completions`,
+        `${config.baseURL}/chat/completions`,
         {
-          model: this.model,
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
+          model: config.model,
+          messages: [{ role: 'user', content: prompt }],
           stream: true,
-          temperature: this.temperature,
+          temperature: config.temperature,
           max_tokens: maxTokens,
         },
         {
           headers: {
-            Authorization: `Bearer ${this.appKey}`,
+            Authorization: `Bearer ${config.appKey}`,
             'Content-Type': 'application/json',
           },
           responseType: 'stream',
@@ -52,13 +59,14 @@ export class AiService {
   }
 
   async generateImage(prompt: string, size: string = '1x1', image?: string): Promise<string> {
-    if (!this.appKey) {
+    const config = await this.getRuntimeConfig();
+    if (!config.appKey) {
       throw new Error('AI_API_KEY 未配置');
     }
 
     try {
       const body: any = {
-        model: process.env.AI_IMAGE_MODEL || 'gpt-image-2',
+        model: config.imageModel,
         prompt,
         size,
       };
@@ -67,11 +75,11 @@ export class AiService {
       }
 
       const response = await axios.post(
-        `${this.baseURL}/images/generations`,
+        `${config.baseURL}/images/generations`,
         body,
         {
           headers: {
-            Authorization: `Bearer ${this.appKey}`,
+            Authorization: `Bearer ${config.appKey}`,
             'Content-Type': 'application/json',
           },
           timeout: 300000,
@@ -93,27 +101,23 @@ export class AiService {
   }
 
   async *generateStream(prompt: string, maxTokens: number = 1000): AsyncGenerator<string> {
-    if (!this.appKey) {
+    const config = await this.getRuntimeConfig();
+    if (!config.appKey) {
       throw new Error('AI_API_KEY 未配置');
     }
 
     const response = await axios.post(
-      `${this.baseURL}/chat/completions`,
+      `${config.baseURL}/chat/completions`,
       {
-        model: this.model,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
+        model: config.model,
+        messages: [{ role: 'user', content: prompt }],
         stream: true,
-        temperature: this.temperature,
+        temperature: config.temperature,
         max_tokens: maxTokens,
       },
       {
         headers: {
-          Authorization: `Bearer ${this.appKey}`,
+          Authorization: `Bearer ${config.appKey}`,
           'Content-Type': 'application/json',
         },
         responseType: 'stream',
@@ -143,6 +147,27 @@ export class AiService {
         yield content;
       }
     }
+  }
+
+  private async getRuntimeConfig(): Promise<AiRuntimeConfig> {
+    const rows = await this.settingRepository.find({
+      where: [
+        { key: 'ai.base_url' },
+        { key: 'ai.model' },
+        { key: 'ai.image_model' },
+        { key: 'ai.api_key' },
+        { key: 'ai.temperature' },
+      ],
+    });
+    const map = new Map(rows.map(item => [item.key, item.value]));
+
+    return {
+      baseURL: map.get('ai.base_url') || process.env.AI_BASE_URL || 'https://api.chatfire.site/v1',
+      model: map.get('ai.model') || process.env.AI_MODEL || 'gpt-5.4',
+      imageModel: map.get('ai.image_model') || process.env.AI_IMAGE_MODEL || 'gpt-image-2',
+      appKey: map.get('ai.api_key') || process.env.AI_API_KEY || '',
+      temperature: Number(map.get('ai.temperature') || process.env.AI_TEMPERATURE || 0.7),
+    };
   }
 
   private readStreamContent(stream: Readable): Promise<string> {

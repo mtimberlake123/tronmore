@@ -251,6 +251,36 @@ export class AdminController {
     };
   }
 
+  @Get('ai-provider')
+  async getAiProviderConfig() {
+    return {
+      code: 200,
+      data: await this.adminService.getAiProviderConfig(),
+    };
+  }
+
+  @Put('ai-provider')
+  async updateAiProviderConfig(@Body() body: {
+    base_url?: string;
+    model?: string;
+    image_model?: string;
+    temperature?: number;
+    api_key?: string;
+  }) {
+    return {
+      code: 200,
+      data: await this.adminService.updateAiProviderConfig(body),
+    };
+  }
+
+  @Get('ai-provider/balance')
+  async getAiProviderBalance() {
+    return {
+      code: 200,
+      data: await this.adminService.getAiProviderBalance(),
+    };
+  }
+
   @Get('ai-agents')
   async getAiAgents(@Query() query: { step_key?: string }) {
     return {

@@ -11,10 +11,14 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AdminService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
+const axios_1 = __importDefault(require("axios"));
 const typeorm_2 = require("typeorm");
 const uuid_1 = require("uuid");
 const tenant_entity_1 = require("../auth/tenant.entity");
@@ -23,14 +27,16 @@ const prompt_template_entity_1 = require("./prompt-template.entity");
 const sensitive_word_entity_1 = require("./sensitive-word.entity");
 const ai_agent_config_entity_1 = require("./ai-agent-config.entity");
 const ai_skill_entity_1 = require("./ai-skill.entity");
+const system_setting_entity_1 = require("./system-setting.entity");
 let AdminService = class AdminService {
-    constructor(tenantRepository, merchantRepository, promptRepository, sensitiveRepository, agentConfigRepository, skillRepository) {
+    constructor(tenantRepository, merchantRepository, promptRepository, sensitiveRepository, agentConfigRepository, skillRepository, settingRepository) {
         this.tenantRepository = tenantRepository;
         this.merchantRepository = merchantRepository;
         this.promptRepository = promptRepository;
         this.sensitiveRepository = sensitiveRepository;
         this.agentConfigRepository = agentConfigRepository;
         this.skillRepository = skillRepository;
+        this.settingRepository = settingRepository;
     }
     async getCompanies(params) {
         const { page = 1, page_size = 20, keyword } = params;
@@ -376,6 +382,89 @@ let AdminService = class AdminService {
             total: list.length,
         };
     }
+    async getAiProviderConfig() {
+        const config = await this.getAiConfigMap();
+        const apiKey = config.get('ai.api_key') || process.env.AI_API_KEY || '';
+        return {
+            base_url: config.get('ai.base_url') || process.env.AI_BASE_URL || 'https://api.chatfire.site/v1',
+            model: config.get('ai.model') || process.env.AI_MODEL || 'gpt-5.4',
+            image_model: config.get('ai.image_model') || process.env.AI_IMAGE_MODEL || 'gpt-image-2',
+            temperature: Number(config.get('ai.temperature') || process.env.AI_TEMPERATURE || 0.7),
+            has_api_key: Boolean(apiKey),
+            api_key_masked: this.maskApiKey(apiKey),
+        };
+    }
+    async updateAiProviderConfig(data) {
+        await this.upsertSetting('ai.base_url', data.base_url || 'https://api.chatfire.site/v1', 'AI接口地址');
+        await this.upsertSetting('ai.model', data.model || 'gpt-5.4', '文本生成模型');
+        await this.upsertSetting('ai.image_model', data.image_model || 'gpt-image-2', '图片生成模型');
+        await this.upsertSetting('ai.temperature', String(data.temperature ?? 0.7), '生成温度');
+        if (data.api_key && data.api_key.trim()) {
+            await this.upsertSetting('ai.api_key', data.api_key.trim(), 'AI接口密钥');
+        }
+        return this.getAiProviderConfig();
+    }
+    async getAiProviderBalance() {
+        const config = await this.getAiProviderConfigWithKey();
+        if (!config.apiKey) {
+            return {
+                success: false,
+                message: '请先在后台配置 AI API Key',
+                data: {
+                    configured: false,
+                    availableBalance: '--',
+                    quotaBalance: '--',
+                },
+            };
+        }
+        const response = await axios_1.default.get(`${config.baseUrl}/chatfire/balance`, {
+            headers: { Authorization: `Bearer ${config.apiKey}` },
+            timeout: 30000,
+        });
+        const data = response.data;
+        if (data?.data?.availableBalance !== undefined) {
+            data.data.availableBalance = (data.data.availableBalance / 500000).toFixed(2);
+            data.data.quotaBalance = ((data.data.quotaBalance || 0) / 500000).toFixed(2);
+        }
+        return data;
+    }
+    async getAiConfigMap() {
+        const rows = await this.settingRepository.find({
+            where: [
+                { key: 'ai.base_url' },
+                { key: 'ai.model' },
+                { key: 'ai.image_model' },
+                { key: 'ai.temperature' },
+                { key: 'ai.api_key' },
+            ],
+        });
+        return new Map(rows.map(item => [item.key, item.value]));
+    }
+    async getAiProviderConfigWithKey() {
+        const config = await this.getAiConfigMap();
+        return {
+            baseUrl: config.get('ai.base_url') || process.env.AI_BASE_URL || 'https://api.chatfire.site/v1',
+            apiKey: config.get('ai.api_key') || process.env.AI_API_KEY || '',
+        };
+    }
+    async upsertSetting(key, value, remark) {
+        let setting = await this.settingRepository.findOne({ where: { key } });
+        if (!setting) {
+            setting = this.settingRepository.create({ key, value, remark });
+        }
+        else {
+            setting.value = value;
+            setting.remark = remark;
+        }
+        await this.settingRepository.save(setting);
+    }
+    maskApiKey(apiKey) {
+        if (!apiKey)
+            return '';
+        if (apiKey.length <= 12)
+            return '已配置';
+        return `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}`;
+    }
     async createAiAgent(data) {
         const agent = this.agentConfigRepository.create({
             agentId: (0, uuid_1.v4)(),
@@ -470,7 +559,9 @@ exports.AdminService = AdminService = __decorate([
     __param(3, (0, typeorm_1.InjectRepository)(sensitive_word_entity_1.SensitiveWord)),
     __param(4, (0, typeorm_1.InjectRepository)(ai_agent_config_entity_1.AiAgentConfig)),
     __param(5, (0, typeorm_1.InjectRepository)(ai_skill_entity_1.AiSkill)),
+    __param(6, (0, typeorm_1.InjectRepository)(system_setting_entity_1.SystemSetting)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,

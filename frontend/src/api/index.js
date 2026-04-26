@@ -6,7 +6,6 @@ const request = axios.create({
   timeout: 30000
 })
 
-// 请求拦截器
 request.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token')
@@ -18,7 +17,6 @@ request.interceptors.request.use(
   error => Promise.reject(error)
 )
 
-// 响应拦截器
 request.interceptors.response.use(
   response => {
     const { code, message, data } = response.data
@@ -33,14 +31,13 @@ request.interceptors.response.use(
       localStorage.removeItem('token')
       window.location.href = '/login'
     }
-    ElMessage.error(error.message || '网络错误')
+    ElMessage.error(error.response?.data?.message || error.message || '网络错误')
     return Promise.reject(error)
   }
 )
 
 export default request
 
-// API接口
 export const auth = {
   loginByPassword: (data) => request.post('/auth/login/password', data),
   loginBySms: (data) => request.post('/auth/login/sms', data),
@@ -78,24 +75,7 @@ export const quota = {
   allocate: (id, data) => request.post(`/merchants/${id}/quota/allocate`, data),
   logs: (params) => request.get('/quota/logs', { params }),
   tenantBalance: () => request.get('/quota/balance'),
-  // 额度查询（外部API）- API返回20000000对应40元，换算比例500000
-  balance: () => {
-    const apiKey = localStorage.getItem('apiKey') || ''
-    if (!apiKey) {
-      return Promise.reject(new Error('请先配置 API Key'))
-    }
-    return axios.get('https://api.chatfire.site/v1/chatfire/balance', {
-      headers: { Authorization: `Bearer ${apiKey}` }
-    }).then(res => {
-      const data = res.data
-      if (data && data.data && data.data.availableBalance !== undefined) {
-        // 换算：API值 / 500000 = 元（保留2位小数）
-        data.data.availableBalance = (data.data.availableBalance / 500000).toFixed(2)
-        data.data.quotaBalance = ((data.data.quotaBalance || 0) / 500000).toFixed(2)
-      }
-      return data
-    })
-  }
+  balance: () => request.get('/admin/ai-provider/balance')
 }
 
 export const generator = {
@@ -146,26 +126,22 @@ export const industry = {
 }
 
 export const admin = {
-  // 营销公司
   companies: {
     list: (params) => request.get('/admin/companies', { params }),
     create: (data) => request.post('/admin/companies', data),
     recharge: (id, data) => request.post(`/admin/companies/${id}/recharge`, data),
     subAccounts: (id, data) => request.post(`/admin/companies/${id}/sub-accounts`, data)
   },
-  // 商家
   merchants: {
     list: (params) => request.get('/admin/merchants', { params }),
     delete: (id) => request.delete(`/admin/merchants/${id}`),
     transfer: (id, data) => request.post(`/admin/merchants/${id}/transfer`, data)
   },
-  // Prompt模板
   prompts: {
     list: (params) => request.get('/admin/prompts', { params }),
     create: (data) => request.post('/admin/prompts', data),
     update: (id, data) => request.put(`/admin/prompts/${id}`, data)
   },
-  // 敏感词/风险规则
   sensitiveWords: {
     list: (params) => request.get('/admin/sensitive-words', { params }),
     create: (data) => request.post('/admin/sensitive-words', data),
@@ -182,5 +158,10 @@ export const admin = {
     list: (params) => request.get('/admin/ai-skills', { params }),
     create: (data) => request.post('/admin/ai-skills', data),
     update: (id, data) => request.put(`/admin/ai-skills/${id}`, data)
+  },
+  aiProvider: {
+    get: () => request.get('/admin/ai-provider'),
+    update: (data) => request.put('/admin/ai-provider', data),
+    balance: () => request.get('/admin/ai-provider/balance')
   }
 }

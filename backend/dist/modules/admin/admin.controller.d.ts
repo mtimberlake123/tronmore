@@ -209,6 +209,38 @@ export declare class AdminController {
         to_tenant: string;
         code: number;
     }>;
+    getAiProviderConfig(): Promise<{
+        code: number;
+        data: {
+            base_url: string;
+            model: string;
+            image_model: string;
+            temperature: number;
+            has_api_key: boolean;
+            api_key_masked: string;
+        };
+    }>;
+    updateAiProviderConfig(body: {
+        base_url?: string;
+        model?: string;
+        image_model?: string;
+        temperature?: number;
+        api_key?: string;
+    }): Promise<{
+        code: number;
+        data: {
+            base_url: string;
+            model: string;
+            image_model: string;
+            temperature: number;
+            has_api_key: boolean;
+            api_key_masked: string;
+        };
+    }>;
+    getAiProviderBalance(): Promise<{
+        code: number;
+        data: any;
+    }>;
     getAiAgents(query: {
         step_key?: string;
     }): Promise<{

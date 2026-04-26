@@ -17,12 +17,13 @@ const prompt_template_entity_1 = require("./prompt-template.entity");
 const sensitive_word_entity_1 = require("./sensitive-word.entity");
 const ai_agent_config_entity_1 = require("./ai-agent-config.entity");
 const ai_skill_entity_1 = require("./ai-skill.entity");
+const system_setting_entity_1 = require("./system-setting.entity");
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
 exports.AdminModule = AdminModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([tenant_entity_1.Tenant, merchant_entity_1.Merchant, prompt_template_entity_1.PromptTemplate, sensitive_word_entity_1.SensitiveWord, ai_agent_config_entity_1.AiAgentConfig, ai_skill_entity_1.AiSkill])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([tenant_entity_1.Tenant, merchant_entity_1.Merchant, prompt_template_entity_1.PromptTemplate, sensitive_word_entity_1.SensitiveWord, ai_agent_config_entity_1.AiAgentConfig, ai_skill_entity_1.AiSkill, system_setting_entity_1.SystemSetting])],
         controllers: [admin_controller_1.AdminController],
         providers: [admin_service_1.AdminService],
         exports: [admin_service_1.AdminService],

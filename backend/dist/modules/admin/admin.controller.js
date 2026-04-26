@@ -111,6 +111,24 @@ let AdminController = class AdminController {
             ...(await this.adminService.transferMerchant(id, body.targetTenantId)),
         };
     }
+    async getAiProviderConfig() {
+        return {
+            code: 200,
+            data: await this.adminService.getAiProviderConfig(),
+        };
+    }
+    async updateAiProviderConfig(body) {
+        return {
+            code: 200,
+            data: await this.adminService.updateAiProviderConfig(body),
+        };
+    }
+    async getAiProviderBalance() {
+        return {
+            code: 200,
+            data: await this.adminService.getAiProviderBalance(),
+        };
+    }
     async getAiAgents(query) {
         return {
             code: 200,
@@ -258,6 +276,25 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "transferMerchant", null);
+__decorate([
+    (0, common_1.Get)('ai-provider'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getAiProviderConfig", null);
+__decorate([
+    (0, common_1.Put)('ai-provider'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "updateAiProviderConfig", null);
+__decorate([
+    (0, common_1.Get)('ai-provider/balance'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], AdminController.prototype, "getAiProviderBalance", null);
 __decorate([
     (0, common_1.Get)('ai-agents'),
     __param(0, (0, common_1.Query)()),

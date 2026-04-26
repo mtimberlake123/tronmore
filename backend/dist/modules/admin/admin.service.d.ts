@@ -5,6 +5,7 @@ import { PromptTemplate } from './prompt-template.entity';
 import { SensitiveWord } from './sensitive-word.entity';
 import { AiAgentConfig } from './ai-agent-config.entity';
 import { AiSkill } from './ai-skill.entity';
+import { SystemSetting } from './system-setting.entity';
 export declare class AdminService {
     private tenantRepository;
     private merchantRepository;
@@ -12,7 +13,8 @@ export declare class AdminService {
     private sensitiveRepository;
     private agentConfigRepository;
     private skillRepository;
-    constructor(tenantRepository: Repository<Tenant>, merchantRepository: Repository<Merchant>, promptRepository: Repository<PromptTemplate>, sensitiveRepository: Repository<SensitiveWord>, agentConfigRepository: Repository<AiAgentConfig>, skillRepository: Repository<AiSkill>);
+    private settingRepository;
+    constructor(tenantRepository: Repository<Tenant>, merchantRepository: Repository<Merchant>, promptRepository: Repository<PromptTemplate>, sensitiveRepository: Repository<SensitiveWord>, agentConfigRepository: Repository<AiAgentConfig>, skillRepository: Repository<AiSkill>, settingRepository: Repository<SystemSetting>);
     getCompanies(params: {
         page?: number;
         page_size?: number;
@@ -195,6 +197,33 @@ export declare class AdminService {
         }[];
         total: number;
     }>;
+    getAiProviderConfig(): Promise<{
+        base_url: string;
+        model: string;
+        image_model: string;
+        temperature: number;
+        has_api_key: boolean;
+        api_key_masked: string;
+    }>;
+    updateAiProviderConfig(data: {
+        base_url?: string;
+        model?: string;
+        image_model?: string;
+        temperature?: number;
+        api_key?: string;
+    }): Promise<{
+        base_url: string;
+        model: string;
+        image_model: string;
+        temperature: number;
+        has_api_key: boolean;
+        api_key_masked: string;
+    }>;
+    getAiProviderBalance(): Promise<any>;
+    private getAiConfigMap;
+    private getAiProviderConfigWithKey;
+    private upsertSetting;
+    private maskApiKey;
     createAiAgent(data: {
         name: string;
         step_key: string;

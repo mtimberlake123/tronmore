@@ -72,6 +72,11 @@ const routes = [
         path: 'ai-workflow',
         name: 'AdminAiWorkflow',
         component: () => import('@/views/admin/AiWorkflow.vue')
+      },
+      {
+        path: 'ai-provider',
+        name: 'AdminAiProvider',
+        component: () => import('@/views/admin/AiProvider.vue')
       }
     ]
   },

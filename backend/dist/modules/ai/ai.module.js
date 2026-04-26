@@ -8,13 +8,16 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AiModule = void 0;
 const common_1 = require("@nestjs/common");
+const typeorm_1 = require("@nestjs/typeorm");
 const ai_service_1 = require("./ai.service");
+const system_setting_entity_1 = require("../admin/system-setting.entity");
 let AiModule = class AiModule {
 };
 exports.AiModule = AiModule;
 exports.AiModule = AiModule = __decorate([
     (0, common_1.Global)(),
     (0, common_1.Module)({
+        imports: [typeorm_1.TypeOrmModule.forFeature([system_setting_entity_1.SystemSetting])],
         providers: [ai_service_1.AiService],
         exports: [ai_service_1.AiService],
     })
