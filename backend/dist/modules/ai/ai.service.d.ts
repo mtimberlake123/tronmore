@@ -7,6 +7,9 @@ export declare class AiService {
     generateImage(prompt: string, size?: string, image?: string): Promise<string>;
     generateStream(prompt: string, maxTokens?: number): AsyncGenerator<string>;
     private getRuntimeConfig;
+    private assertConfigured;
+    private buildHeaders;
     private readStreamContent;
     private parseStreamLine;
+    private normalizeAiError;
 }

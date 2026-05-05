@@ -43,7 +43,7 @@ export class GeneratorService {
       generatedContent = await this.callAIService(prompt, type);
     } catch (error) {
       console.error('AI服务调用失败:', error);
-      throw new BadRequestException('AI服务异常', '4002');
+      throw new BadRequestException(error?.message || 'AI服务异常', '4002');
     }
 
     if (await this.promptBuilder.containsSensitiveWords(generatedContent.text)) {
@@ -112,7 +112,7 @@ export class GeneratorService {
       generatedContent = await this.callAIService(prompt, 'review');
     } catch (error) {
       console.error('AI预览生成失败:', error);
-      throw new BadRequestException('AI服务异常', '4002');
+      throw new BadRequestException(error?.message || 'AI服务异常', '4002');
     }
 
     if (await this.promptBuilder.containsSensitiveWords(generatedContent.text)) {

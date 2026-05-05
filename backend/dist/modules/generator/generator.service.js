@@ -49,7 +49,7 @@ let GeneratorService = class GeneratorService {
         }
         catch (error) {
             console.error('AI服务调用失败:', error);
-            throw new common_1.BadRequestException('AI服务异常', '4002');
+            throw new common_1.BadRequestException(error?.message || 'AI服务异常', '4002');
         }
         if (await this.promptBuilder.containsSensitiveWords(generatedContent.text)) {
             throw new common_1.BadRequestException('内容包含敏感词', '4003');
@@ -109,7 +109,7 @@ let GeneratorService = class GeneratorService {
         }
         catch (error) {
             console.error('AI预览生成失败:', error);
-            throw new common_1.BadRequestException('AI服务异常', '4002');
+            throw new common_1.BadRequestException(error?.message || 'AI服务异常', '4002');
         }
         if (await this.promptBuilder.containsSensitiveWords(generatedContent.text)) {
             throw new common_1.BadRequestException('内容包含敏感词', '4003');

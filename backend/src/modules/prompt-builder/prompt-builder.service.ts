@@ -4,6 +4,7 @@ import { In, Repository } from 'typeorm';
 import { PromptTemplate } from '../admin/prompt-template.entity';
 import { SensitiveWord } from '../admin/sensitive-word.entity';
 import { Merchant } from '../merchant/merchant.entity';
+import { Reference } from '../reference/reference.entity';
 
 export type GenerateType = 'review' | 'note' | string;
 
@@ -23,6 +24,8 @@ export class PromptBuilderService {
     private promptRepository: Repository<PromptTemplate>,
     @InjectRepository(SensitiveWord)
     private sensitiveWordRepository: Repository<SensitiveWord>,
+    @InjectRepository(Reference)
+    private referenceRepository: Repository<Reference>,
   ) {}
 
   async buildMerchantPrompt(
@@ -31,6 +34,11 @@ export class PromptBuilderService {
     options: BuildPromptOptions = {},
   ): Promise<string> {
     const normalizedType = this.normalizeType(type);
+
+    if (normalizedType === 'note') {
+      return this.buildCompactNotePrompt(merchant, options);
+    }
+
     const promptTemplates = await this.getPromptTemplates(merchant.category, normalizedType);
     const riskRules = await this.getActiveRiskRules();
     const merchantPreset = this.getMerchantPreset(merchant, normalizedType, options);
@@ -39,10 +47,7 @@ export class PromptBuilderService {
       this.renderTemplateSection('系统通用规则', promptTemplates.common),
       this.renderTemplateSection('场景生成规则', promptTemplates.scene),
       this.renderTemplateSection('行业补充规则', promptTemplates.industry),
-      this.renderPersonalitySection(normalizedType, merchant, options),
-      this.renderVariationSection(normalizedType, merchant, options),
-      this.renderAvoidRepeatSection(normalizedType, options),
-      this.renderMerchantInfo(merchant),
+      this.renderMerchantInfo(merchant, true),
       this.renderTextSection('商家个性化要求', merchantPreset),
       this.renderTextSection('风控合规规则', riskRules.map(rule => `- ${rule.rule}`).join('\n')),
       this.renderOutputLimits(normalizedType),
@@ -59,6 +64,46 @@ export class PromptBuilderService {
       const word = (rule.word || '').trim();
       return word.length > 0 && text.includes(word);
     });
+  }
+
+  private async buildCompactNotePrompt(
+    merchant: Merchant,
+    options: BuildPromptOptions,
+  ): Promise<string> {
+    const referenceTemplate = await this.getReferenceNoteTemplate(
+      merchant.tenantId,
+      options.variationSeed,
+    );
+    const persona = this.pickNotePersona(merchant, options);
+    const requirements = this.getMerchantPreset(merchant, 'note', options);
+    const features = this.renderList(merchant.features);
+    const avoidRepeat = this.renderCompactAvoidRepeat(options.recentOutputs);
+
+    const sections = [
+      '帮普通用户写一条小红书短笔记，只输出正文。',
+      [
+        `商家：${merchant.name || '未填写'}`,
+        `特色：${features || '未填写'}`,
+        requirements ? `商家要求：${this.truncate(requirements, 260)}` : '',
+      ].filter(Boolean).join('\n'),
+      referenceTemplate
+        ? `参考语感，不要照抄、不要复述、不要沿用里面的具体事实，只学习句子长短和口吻：\n${this.truncate(referenceTemplate, 260)}`
+        : '',
+      `本次口吻：${persona}`,
+      avoidRepeat,
+      [
+        '要求：',
+        '80-160字，短句，像随手分享。',
+        '少用“我”，不要广告腔，不要写成攻略。',
+        '必须有一句温和的小保留或轻微负面。',
+        '不要虚构价格、地址、排队、排名、优惠。',
+        '标签最多2个，可以没有。',
+      ].join('\n'),
+    ].filter(Boolean);
+
+    const prompt = sections.join('\n\n');
+    this.logPromptDebug('note', prompt, sections);
+    return prompt;
   }
 
   private normalizeType(type: GenerateType): string {
@@ -83,6 +128,25 @@ export class PromptBuilderService {
       scene: templates.filter(t => t.industry === 'general' && t.style === type),
       industry: templates.filter(t => t.industry === category && t.style === type),
     };
+  }
+
+  private async getReferenceNoteTemplate(
+    tenantId: string,
+    variationSeed?: string,
+  ): Promise<string> {
+    const references = await this.referenceRepository.find({
+      where: { tenantId, type: 'note' },
+      order: { createdAt: 'DESC' },
+      take: 20,
+    });
+
+    if (!references.length) return '';
+    if (references.length === 1 || !variationSeed) {
+      return references[0].content || '';
+    }
+
+    const index = this.hashSeed(`${tenantId}:${variationSeed}`) % references.length;
+    return references[index].content || '';
   }
 
   private async getActiveRiskRules(): Promise<SensitiveWord[]> {
@@ -127,6 +191,37 @@ export class PromptBuilderService {
       .join('\n');
   }
 
+  private pickNotePersona(merchant: Merchant, options: BuildPromptOptions): string {
+    const seed = `${merchant.merchantId}:${options.personaSeed || ''}:${options.variationSeed || Date.now()}`;
+    const personas = [
+      '顺路体验型，轻松一点，不用力夸。',
+      '朋友聊天型，像发给朋友看的短分享。',
+      '轻微挑剔型，整体认可但会带一句小保留。',
+      '拍照记录型，关注第一眼感觉和现场观感，但不写成拍照攻略。',
+      '附近生活型，语气像本地人简单记一笔。',
+    ];
+
+    return personas[this.hashSeed(seed) % personas.length];
+  }
+
+  private renderCompactAvoidRepeat(recentOutputs?: string[]): string {
+    if (!recentOutputs?.length) return '';
+
+    const recent = recentOutputs
+      .map(text => (text || '').replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .map((text, index) => `${index + 1}. ${this.truncate(text, 80)}`)
+      .join('\n');
+
+    if (!recent) return '';
+
+    return [
+      '避免重复下面最近生成过的开头、句式和负面点：',
+      recent,
+    ].join('\n');
+  }
+
   private renderTemplateSection(title: string, templates: PromptTemplate[]): string {
     const content = templates
       .map(template => (template.content || '').trim())
@@ -136,129 +231,25 @@ export class PromptBuilderService {
     return this.renderTextSection(title, content);
   }
 
-  private renderMerchantInfo(merchant: Merchant): string {
+  private renderMerchantInfo(merchant: Merchant, includeProducts: boolean): string {
     const products = this.renderList(merchant.products);
     const features = this.renderList(merchant.features);
-
-    return [
+    const lines = [
       '【商家信息】',
       `商家名：${merchant.name || '未填写'}`,
-      `商家产品：${products || '未填写'}`,
-      `特色宣传点：${features || '未填写'}`,
-    ].join('\n');
+    ];
+
+    if (includeProducts) {
+      lines.push(`商家产品：${products || '未填写'}`);
+    }
+
+    lines.push(`特色宣传点：${features || '未填写'}`);
+    return lines.join('\n');
   }
 
   private renderTextSection(title: string, content: string): string {
     if (!content?.trim()) return '';
     return `【${title}】\n${content.trim()}`;
-  }
-
-  private renderPersonalitySection(type: string, merchant: Merchant, options: BuildPromptOptions): string {
-    if (type !== 'note') return '';
-
-    const seed = `${merchant.merchantId}:${options.personaSeed || Date.now()}`;
-    const personas = [
-      {
-        name: '细节控但不夸张',
-        voice: '说话克制，容易注意到口味、环境或服务里的小细节。',
-        habit: '常用“还挺”“这点我会加分”“不过...”这类自然表达。',
-      },
-      {
-        name: '附近顺路型',
-        voice: '像住在附近或路过顺手体验的人，不端着，不写攻略。',
-        habit: '常用“顺路”“附近”“简单吃一下”“下次可能还会来”。',
-      },
-      {
-        name: '轻微挑剔型',
-        voice: '整体认可，但会带一句不伤人的保留意见，显得更真实。',
-        habit: '常用“但我觉得...”“如果...会更好”“不是那种特别惊艳，但挺舒服”。',
-      },
-      {
-        name: '朋友安利型',
-        voice: '像发给朋友看的短分享，语气轻松，不硬推。',
-        habit: '常用“可以试试”“适合...的时候来”“我会更推荐...”。',
-      },
-      {
-        name: '拍照记录型',
-        voice: '更关注第一眼感觉、画面和氛围，但不写成网红模板。',
-        habit: '常用“第一眼”“看着挺干净”“拍出来还行”“现场比想象中...”。',
-      },
-    ];
-    const persona = personas[this.hashSeed(seed) % personas.length];
-
-    return this.renderTextSection(
-      '用户个性化口吻',
-      [
-        `本次笔记请使用“${persona.name}”口吻。`,
-        persona.voice,
-        persona.habit,
-        '不要在正文里说出人设名称，不要解释自己是什么性格。',
-        '必须包含一句轻微负面或保留意见，但语气要温和，例如“就是...稍微...”“如果...会更好”“不是特别...但...”。',
-        '尽量不要使用第一人称“我”，可以改成“这家”“整体”“个人感觉”“朋友会喜欢这种”。',
-      ].join('\n'),
-    );
-  }
-
-  private renderVariationSection(type: string, merchant: Merchant, options: BuildPromptOptions): string {
-    if (type !== 'note') return '';
-
-    const seed = `${merchant.merchantId}:${options.variationSeed || Date.now()}`;
-    const angles = [
-      '这次只写“顺路试了一下”的感觉，重点放在第一印象。',
-      '这次只写“适合什么场景来”的感觉，不要写成全面介绍。',
-      '这次只写一个产品或口味记忆点，其他信息少带。',
-      '这次从“有一点小遗憾但整体还行”的角度写。',
-      '这次写得像发给朋友看的短消息，少修饰，直接一点。',
-      '这次从图片/门店观感切入，但不要写成拍照攻略。',
-    ];
-    const openings = [
-      '开头不要用“今天发现宝藏店”。',
-      '开头不要用“姐妹们”。',
-      '开头不要用“真的被惊艳到”。',
-      '开头可以平一点，不要强行抓马。',
-      '开头像随手记录，不要像标题党。',
-    ];
-    const negatives = [
-      '轻微负面优先写“不是特别惊艳”。',
-      '轻微负面优先写“如果选择再多点会更好”。',
-      '轻微负面优先写“口味/体验会更适合特定人群”。',
-      '轻微负面优先写“环境或包装不是特别出片”。',
-      '轻微负面优先写“饭点可能会有点热闹”。',
-    ];
-
-    const hash = this.hashSeed(seed);
-    return this.renderTextSection(
-      '本次变化要求',
-      [
-        angles[hash % angles.length],
-        openings[Math.floor(hash / 7) % openings.length],
-        negatives[Math.floor(hash / 13) % negatives.length],
-        '这次的句式、开头和负面点要和上一条明显不同，不要复用同一套表达。',
-        '可以自然带1个网络热门词或轻梗，例如“松弛感”“有点东西”“稳稳的”“狠狠拿捏”，但不要堆梗。',
-      ].join('\n'),
-    );
-  }
-
-  private renderAvoidRepeatSection(type: string, options: BuildPromptOptions): string {
-    if (type !== 'note' || !options.recentOutputs?.length) return '';
-
-    const recent = options.recentOutputs
-      .map(text => (text || '').replace(/\s+/g, ' ').trim())
-      .filter(Boolean)
-      .slice(0, 3)
-      .map((text, index) => `${index + 1}. ${text.slice(0, 120)}`)
-      .join('\n');
-
-    if (!recent) return '';
-
-    return this.renderTextSection(
-      '避免重复',
-      [
-        '下面是该用户最近生成过的笔记片段，本次不要复用相同开头、句式、评价角度或轻微负面点：',
-        recent,
-        '本次请换一个表达路径，像同一个人又随手写了另一条，而不是改写上一条。',
-      ].join('\n'),
-    );
   }
 
   private renderOutputLimits(type: string): string {
@@ -271,19 +262,16 @@ export class PromptBuilderService {
     if (type === 'note') {
       return [
         '【输出限制】',
-        '请生成一条适合小红书发布的短笔记，像普通人随手分享，不要像AI作文或商家广告。',
-        '字数严格控制在60-160字，宁可短一点，不要写满。',
-        '最多3个短段落，每段1-2句话；可以有标题，但标题也要像真人随手写的。',
-        '必须自然带一句轻微负面评价或保留意见，不能全篇只夸；不要恶意差评。',
-        '尽量少用“我”，全文最多出现1次；可适量带网络热门词汇或轻梗，但不要油腻、不要堆梗。',
-        '标签最多3个，可不要标签；不要堆emoji、感叹号、排比句和万能模板句。',
+        '生成一条适合小红书发布的中文短笔记。',
+        '字数严格控制在80-160字。',
+        '必须自然带一句轻微负面评价或保留意见。',
         ...commonLimits,
       ].join('\n');
     }
 
     return [
       '【输出限制】',
-      '请生成一条适合大众点评/美团发布的中文商家点评，语气像真实顾客，不要像广告。',
+      '生成一条适合大众点评/美团发布的中文商家点评，语气像真实顾客，不要像广告。',
       '字数严格控制在80-180字。',
       ...commonLimits,
     ].join('\n');
@@ -294,9 +282,24 @@ export class PromptBuilderService {
     return values.map(value => (value || '').trim()).filter(Boolean).join('、');
   }
 
+  private truncate(value: string, maxLength: number): string {
+    const text = (value || '').trim();
+    if (text.length <= maxLength) return text;
+    return `${text.slice(0, maxLength)}...`;
+  }
+
   private hashSeed(seed: string): number {
     return Array.from(seed).reduce((hash, char) => {
       return (hash * 31 + char.charCodeAt(0)) >>> 0;
     }, 2166136261);
+  }
+
+  private logPromptDebug(type: string, prompt: string, sections: string[]) {
+    if (process.env.NODE_ENV === 'production') return;
+    console.log('[PromptBuilder]', {
+      type,
+      length: prompt.length,
+      sections: sections.length,
+    });
   }
 }

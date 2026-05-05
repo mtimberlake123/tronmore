@@ -69,7 +69,7 @@ let H5Service = class H5Service {
         }
         catch (error) {
             console.error('AI生成失败:', error);
-            throw new common_1.BadRequestException('AI服务异常', '4002');
+            throw new common_1.BadRequestException(error?.message || 'AI服务异常', '4002');
         }
         if (await this.promptBuilder.containsSensitiveWords(content)) {
             throw new common_1.BadRequestException('内容优化中，请重试', '4003');
@@ -128,7 +128,7 @@ let H5Service = class H5Service {
         }
         catch (error) {
             console.error('AI流式生成失败:', error);
-            throw new common_1.BadRequestException('AI服务异常', '4002');
+            throw new common_1.BadRequestException(error?.message || 'AI服务异常', '4002');
         }
         if (await this.promptBuilder.containsSensitiveWords(content)) {
             throw new common_1.BadRequestException('内容优化中，请重试', '4003');

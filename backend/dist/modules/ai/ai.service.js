@@ -27,9 +27,7 @@ let AiService = class AiService {
     }
     async generate(prompt, maxTokens = 1000) {
         const config = await this.getRuntimeConfig();
-        if (!config.appKey) {
-            throw new Error('AI_API_KEY 未配置');
-        }
+        this.assertConfigured(config);
         try {
             const response = await axios_1.default.post(`${config.baseURL}/chat/completions`, {
                 model: config.model,
@@ -38,10 +36,7 @@ let AiService = class AiService {
                 temperature: config.temperature,
                 max_tokens: maxTokens,
             }, {
-                headers: {
-                    Authorization: `Bearer ${config.appKey}`,
-                    'Content-Type': 'application/json',
-                },
+                headers: this.buildHeaders(config.appKey),
                 responseType: 'stream',
                 timeout: 60000,
             });
@@ -52,15 +47,12 @@ let AiService = class AiService {
             return text.trim();
         }
         catch (error) {
-            console.error('AI服务调用失败:', error.response?.data || error.message);
-            throw new Error(`AI服务异常: ${error.response?.data?.error?.message || error.message}`);
+            throw this.normalizeAiError(error, 'AI 服务调用失败');
         }
     }
     async generateImage(prompt, size = '1x1', image) {
         const config = await this.getRuntimeConfig();
-        if (!config.appKey) {
-            throw new Error('AI_API_KEY 未配置');
-        }
+        this.assertConfigured(config);
         try {
             const body = {
                 model: config.imageModel,
@@ -71,10 +63,7 @@ let AiService = class AiService {
                 body.image = image;
             }
             const response = await axios_1.default.post(`${config.baseURL}/images/generations`, body, {
-                headers: {
-                    Authorization: `Bearer ${config.appKey}`,
-                    'Content-Type': 'application/json',
-                },
+                headers: this.buildHeaders(config.appKey),
                 timeout: 300000,
             });
             const item = response.data?.data?.[0] || response.data?.images?.[0] || response.data?.[0];
@@ -87,29 +76,29 @@ let AiService = class AiService {
             throw new Error('图片生成接口未返回图片');
         }
         catch (error) {
-            console.error('图片生成服务调用失败:', error.response?.data || error.message);
-            throw new Error(`图片生成服务异常: ${error.response?.data?.error?.message || error.message}`);
+            throw this.normalizeAiError(error, '图片生成服务调用失败');
         }
     }
     async *generateStream(prompt, maxTokens = 1000) {
         const config = await this.getRuntimeConfig();
-        if (!config.appKey) {
-            throw new Error('AI_API_KEY 未配置');
+        this.assertConfigured(config);
+        let response;
+        try {
+            response = await axios_1.default.post(`${config.baseURL}/chat/completions`, {
+                model: config.model,
+                messages: [{ role: 'user', content: prompt }],
+                stream: true,
+                temperature: config.temperature,
+                max_tokens: maxTokens,
+            }, {
+                headers: this.buildHeaders(config.appKey),
+                responseType: 'stream',
+                timeout: 60000,
+            });
         }
-        const response = await axios_1.default.post(`${config.baseURL}/chat/completions`, {
-            model: config.model,
-            messages: [{ role: 'user', content: prompt }],
-            stream: true,
-            temperature: config.temperature,
-            max_tokens: maxTokens,
-        }, {
-            headers: {
-                Authorization: `Bearer ${config.appKey}`,
-                'Content-Type': 'application/json',
-            },
-            responseType: 'stream',
-            timeout: 60000,
-        });
+        catch (error) {
+            throw this.normalizeAiError(error, 'AI 流式服务调用失败');
+        }
         const decoder = new TextDecoder();
         let buffer = '';
         for await (const chunk of response.data) {
@@ -147,6 +136,17 @@ let AiService = class AiService {
             imageModel: map.get('ai.image_model') || process.env.AI_IMAGE_MODEL || 'gpt-image-2',
             appKey: map.get('ai.api_key') || process.env.AI_API_KEY || '',
             temperature: Number(map.get('ai.temperature') || process.env.AI_TEMPERATURE || 0.7),
+        };
+    }
+    assertConfigured(config) {
+        if (!config.appKey) {
+            throw new Error('请先在后台接口配置中填写 AI API Key');
+        }
+    }
+    buildHeaders(appKey) {
+        return {
+            Authorization: `Bearer ${appKey}`,
+            'Content-Type': 'application/json',
         };
     }
     readStreamContent(stream) {
@@ -190,6 +190,18 @@ let AiService = class AiService {
         catch {
             return null;
         }
+    }
+    normalizeAiError(error, fallback) {
+        const responseData = error?.response?.data;
+        const status = error?.response?.status;
+        const providerMessage = responseData?.error?.message ||
+            responseData?.message ||
+            responseData?.error ||
+            error?.message ||
+            fallback;
+        const message = status ? `${fallback}(${status}): ${providerMessage}` : providerMessage;
+        console.error(fallback, responseData || error?.message || error);
+        return new Error(message);
     }
 };
 exports.AiService = AiService;

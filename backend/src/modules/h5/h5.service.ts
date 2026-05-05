@@ -66,7 +66,7 @@ export class H5Service {
       content = await this.aiService.generate(prompt, type === 'note' ? 260 : 520);
     } catch (error) {
       console.error('AI生成失败:', error);
-      throw new BadRequestException('AI服务异常', '4002');
+      throw new BadRequestException(error?.message || 'AI服务异常', '4002');
     }
 
     if (await this.promptBuilder.containsSensitiveWords(content)) {
@@ -138,7 +138,7 @@ export class H5Service {
       }
     } catch (error) {
       console.error('AI流式生成失败:', error);
-      throw new BadRequestException('AI服务异常', '4002');
+      throw new BadRequestException(error?.message || 'AI服务异常', '4002');
     }
 
     if (await this.promptBuilder.containsSensitiveWords(content)) {

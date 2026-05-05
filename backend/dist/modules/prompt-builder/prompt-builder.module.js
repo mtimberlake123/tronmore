@@ -11,13 +11,14 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const prompt_template_entity_1 = require("../admin/prompt-template.entity");
 const sensitive_word_entity_1 = require("../admin/sensitive-word.entity");
+const reference_entity_1 = require("../reference/reference.entity");
 const prompt_builder_service_1 = require("./prompt-builder.service");
 let PromptBuilderModule = class PromptBuilderModule {
 };
 exports.PromptBuilderModule = PromptBuilderModule;
 exports.PromptBuilderModule = PromptBuilderModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([prompt_template_entity_1.PromptTemplate, sensitive_word_entity_1.SensitiveWord])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([prompt_template_entity_1.PromptTemplate, sensitive_word_entity_1.SensitiveWord, reference_entity_1.Reference])],
         providers: [prompt_builder_service_1.PromptBuilderService],
         exports: [prompt_builder_service_1.PromptBuilderService],
     })

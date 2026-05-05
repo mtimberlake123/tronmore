@@ -22,9 +22,7 @@ export class AiService {
 
   async generate(prompt: string, maxTokens: number = 1000): Promise<string> {
     const config = await this.getRuntimeConfig();
-    if (!config.appKey) {
-      throw new Error('AI_API_KEY 未配置');
-    }
+    this.assertConfigured(config);
 
     try {
       const response = await axios.post(
@@ -37,10 +35,7 @@ export class AiService {
           max_tokens: maxTokens,
         },
         {
-          headers: {
-            Authorization: `Bearer ${config.appKey}`,
-            'Content-Type': 'application/json',
-          },
+          headers: this.buildHeaders(config.appKey),
           responseType: 'stream',
           timeout: 60000,
         },
@@ -53,16 +48,13 @@ export class AiService {
 
       return text.trim();
     } catch (error) {
-      console.error('AI服务调用失败:', error.response?.data || error.message);
-      throw new Error(`AI服务异常: ${error.response?.data?.error?.message || error.message}`);
+      throw this.normalizeAiError(error, 'AI 服务调用失败');
     }
   }
 
   async generateImage(prompt: string, size: string = '1x1', image?: string): Promise<string> {
     const config = await this.getRuntimeConfig();
-    if (!config.appKey) {
-      throw new Error('AI_API_KEY 未配置');
-    }
+    this.assertConfigured(config);
 
     try {
       const body: any = {
@@ -74,17 +66,10 @@ export class AiService {
         body.image = image;
       }
 
-      const response = await axios.post(
-        `${config.baseURL}/images/generations`,
-        body,
-        {
-          headers: {
-            Authorization: `Bearer ${config.appKey}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 300000,
-        },
-      );
+      const response = await axios.post(`${config.baseURL}/images/generations`, body, {
+        headers: this.buildHeaders(config.appKey),
+        timeout: 300000,
+      });
 
       const item = response.data?.data?.[0] || response.data?.images?.[0] || response.data?.[0];
       const imageUrl = item?.url || item?.image_url;
@@ -95,35 +80,34 @@ export class AiService {
 
       throw new Error('图片生成接口未返回图片');
     } catch (error) {
-      console.error('图片生成服务调用失败:', error.response?.data || error.message);
-      throw new Error(`图片生成服务异常: ${error.response?.data?.error?.message || error.message}`);
+      throw this.normalizeAiError(error, '图片生成服务调用失败');
     }
   }
 
   async *generateStream(prompt: string, maxTokens: number = 1000): AsyncGenerator<string> {
     const config = await this.getRuntimeConfig();
-    if (!config.appKey) {
-      throw new Error('AI_API_KEY 未配置');
-    }
+    this.assertConfigured(config);
 
-    const response = await axios.post(
-      `${config.baseURL}/chat/completions`,
-      {
-        model: config.model,
-        messages: [{ role: 'user', content: prompt }],
-        stream: true,
-        temperature: config.temperature,
-        max_tokens: maxTokens,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${config.appKey}`,
-          'Content-Type': 'application/json',
+    let response;
+    try {
+      response = await axios.post(
+        `${config.baseURL}/chat/completions`,
+        {
+          model: config.model,
+          messages: [{ role: 'user', content: prompt }],
+          stream: true,
+          temperature: config.temperature,
+          max_tokens: maxTokens,
         },
-        responseType: 'stream',
-        timeout: 60000,
-      },
-    );
+        {
+          headers: this.buildHeaders(config.appKey),
+          responseType: 'stream',
+          timeout: 60000,
+        },
+      );
+    } catch (error) {
+      throw this.normalizeAiError(error, 'AI 流式服务调用失败');
+    }
 
     const decoder = new TextDecoder();
     let buffer = '';
@@ -170,6 +154,19 @@ export class AiService {
     };
   }
 
+  private assertConfigured(config: AiRuntimeConfig) {
+    if (!config.appKey) {
+      throw new Error('请先在后台接口配置中填写 AI API Key');
+    }
+  }
+
+  private buildHeaders(appKey: string) {
+    return {
+      Authorization: `Bearer ${appKey}`,
+      'Content-Type': 'application/json',
+    };
+  }
+
   private readStreamContent(stream: Readable): Promise<string> {
     return new Promise((resolve, reject) => {
       const decoder = new TextDecoder();
@@ -213,5 +210,20 @@ export class AiService {
     } catch {
       return null;
     }
+  }
+
+  private normalizeAiError(error: any, fallback: string): Error {
+    const responseData = error?.response?.data;
+    const status = error?.response?.status;
+    const providerMessage =
+      responseData?.error?.message ||
+      responseData?.message ||
+      responseData?.error ||
+      error?.message ||
+      fallback;
+
+    const message = status ? `${fallback}(${status}): ${providerMessage}` : providerMessage;
+    console.error(fallback, responseData || error?.message || error);
+    return new Error(message);
   }
 }
